@@ -1,0 +1,43 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+  environment: "development"
+  log_level: "info"
+
+cache:
+  exact:
+    enabled: true
+    ttl_seconds: 86400
+  semantic:
+    enabled: true
+    collection_name: "routemem_semantic_cache"
+    embedding_model: "BAAI/bge-small-en-v1.5"
+    vector_dimension: 384
+    similarity_threshold: 0.95
+
+memory:
+  compression:
+    enabled: true
+    target_reduction_ratio: 0.80
+    model_name: "microsoft/llmlingua-2-xlm-roberta-large-meetingbank"
+  zep:
+    enabled: true
+    url: "http://localhost:8080"
+
+router:
+  profiler:
+    model_path: "models/deberta_v3_profiler.onnx"
+  alpha_target: 0.95
+  monthly_budget_cap: 500.00
+  default_lambda: 1.0
+
+backends:
+  local_slm:
+    name: "llama-3.1-8b"
+    endpoint: "http://localhost:8001/v1"
+  code_model:
+    name: "qwen-2.5-coder-32b"
+    endpoint: "http://localhost:8001/v1"
+  frontier_cloud:
+    name: "claude-3.5-sonnet"
+    provider: "anthropic"

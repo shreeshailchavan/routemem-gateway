@@ -1,0 +1,26 @@
+{
+  "total_benchmark_samples": 12,
+  "benchmarks_included": [
+    "MeetingBank",
+    "LMSYS_Arena",
+    "LiveCodeBench",
+    "MMLU_Pro",
+    "MATH_500",
+    "HumanEval",
+    "SWE_bench_Lite",
+    "RULER_128k",
+    "GSM8K"
+  ],
+  "categories": [
+    "code_generation",
+    "long_context_retrieval",
+    "competition_math",
+    "long_context_summary",
+    "stem_reasoning",
+    "competitive_programming",
+    "software_engineering",
+    "general_qa",
+    "math_reasoning"
+  ],
+  "file_path": "data/benchmarks/test_suite.jsonl"
+}

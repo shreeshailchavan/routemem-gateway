@@ -1,0 +1,37 @@
+{
+  "Frontier_LLM_Only": {
+    "total_cost_usd": 0.5446,
+    "avg_latency_ms": 378.19,
+    "accuracy_pct": 96.0,
+    "total_tokens": 217835,
+    "cost_reduction_pct": 0.0
+  },
+  "Cheap_SLM_Only": {
+    "total_cost_usd": 0.0436,
+    "avg_latency_ms": 120.57,
+    "accuracy_pct": 72.28,
+    "total_tokens": 217835,
+    "cost_reduction_pct": 92.0
+  },
+  "FrugalGPT_Cascade": {
+    "total_cost_usd": 0.3146,
+    "avg_latency_ms": 315.54,
+    "accuracy_pct": 91.63,
+    "total_tokens": 217835,
+    "cost_reduction_pct": 42.24
+  },
+  "RouteLLM_Router": {
+    "total_cost_usd": 0.208,
+    "avg_latency_ms": 214.99,
+    "accuracy_pct": 90.88,
+    "total_tokens": 217835,
+    "cost_reduction_pct": 61.8
+  },
+  "RouteMem_AI_Gateway": {
+    "total_cost_usd": 0.0004,
+    "avg_latency_ms": 61.91,
+    "accuracy_pct": 93.85,
+    "total_tokens": 30354,
+    "cost_reduction_pct": 99.93
+  }
+}

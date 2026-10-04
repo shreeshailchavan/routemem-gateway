@@ -1,0 +1,22 @@
+# Environment variables & API keys
+.env
+*.env
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Logs & Temporary Files
+uvicorn.log
+*.log
+scratch/
+.system_generated/
+
+# OS & IDE Files
+.DS_Store
+.vscode/
+.idea/

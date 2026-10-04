@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: routemem-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis-cache:6379/0
+      - QDRANT_URL=http://qdrant-db:6333
+      - LOG_LEVEL=info
+    depends_on:
+      - redis-cache
+      - qdrant-db
+    restart: always
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: routemem-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  qdrant-db:
+    image: qdrant/qdrant:v1.7.4
+    container_name: routemem-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: always
+
+volumes:
+  qdrant_data:
