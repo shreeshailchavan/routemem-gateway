@@ -10,7 +10,7 @@ class GroqClient(BaseLLMBackend):
     Supports model fallback cascade across active Groq LPU models.
     """
 
-    DEFAULT_FALLBACKS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen-2.5-coder-32b", "deepseek-r1-distill-llama-70b"]
+    DEFAULT_FALLBACKS = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or getattr(settings, "groq_api_key", "")
@@ -54,9 +54,10 @@ class GroqClient(BaseLLMBackend):
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     async with client.stream("POST", url, headers=headers, json=payload) as response:
                         if response.status_code != 200:
-                            if response.status_code in (404, 429) and target_model != candidate_models[-1]:
-                                continue  # Fallback to next available Groq model
-                            yield f"[Groq API Error {response.status_code}]"
+                            err_body = await response.aread()
+                            if response.status_code in (400, 404, 422, 429) and target_model != candidate_models[-1]:
+                                continue  # Fallback to next available active Groq model
+                            yield f"[Groq API Error {response.status_code}: {err_body.decode('utf-8')}]"
                             return
 
                         async for line in response.aiter_lines():

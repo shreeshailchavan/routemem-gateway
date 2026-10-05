@@ -145,14 +145,12 @@ async def chat_completions(request: ChatCompletionRequest):
     if "groq" in selected_model or "deepseek" in selected_model or selected_model == "routemem-auto":
         backend_client = groq_client
         cache_status = "GROQ_LPU_HIT"
-        if "deepseek" in selected_model or "r1" in selected_model:
-            actual_model_name = "deepseek-r1-distill-llama-70b"
-        elif "qwen" in selected_model or "coder" in selected_model:
-            actual_model_name = "qwen-2.5-coder-32b"
-        elif "8b" in selected_model:
-            actual_model_name = "llama-3.1-8b-instant"
+        if "qwen" in selected_model or "coder" in selected_model:
+            actual_model_name = "qwen/qwen3.8-27b"
+        elif "20b" in selected_model or "8b" in selected_model:
+            actual_model_name = "openai/gpt-oss-20b"
         else:
-            actual_model_name = "llama-3.3-70b-versatile"
+            actual_model_name = "openai/gpt-oss-120b"
     elif "gemini" in selected_model:
         backend_client = gemini_client
         cache_status = "GEMINI_API_HIT"
