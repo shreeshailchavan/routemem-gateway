@@ -103,6 +103,7 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
             # Parse Response
             answer = res_data["choices"][0]["message"]["content"]
             meta = res_data.get("routemem_metadata", {})
+            cache_status = meta.get("cache_status", "UNKNOWN")
             target_model = meta.get("target_routed_model", "routemem-auto")
             answering_model = meta.get("actual_answering_model", meta.get("routed_model", res_data.get("model", "unknown")))
             ttft_ms = meta.get("ttft_ms", roundtrip_ms)
