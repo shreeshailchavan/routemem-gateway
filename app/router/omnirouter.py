@@ -33,12 +33,14 @@ class OmniRouter:
         Loss = Cost - lambda * (Predicted_Accuracy - Quality_Target)
         """
         # Tiered routing thresholds
-        if intent == "simple_qa" or difficulty <= 0.45:
-            return "llama-3.1-8b"
+        if intent == "simple_qa" or difficulty <= 0.35:
+            return "phi-3.5-mini-local"
         elif intent == "code_generation" and difficulty <= 0.70:
-            return "qwen-2.5-coder-32b"
-        elif difficulty <= 0.65:
-            return "openai/gpt-oss-20b"
+            return "qwen-2.5-7b-local"
+        elif difficulty <= 0.55:
+            return "mistral-7b-local"
+        elif difficulty <= 0.75:
+            return "llama-3.3-70b-local"
 
         target_quality = quality_target or self.alpha_target
         target_vec = self.mapper.map_intent_to_target_vector(intent, difficulty)

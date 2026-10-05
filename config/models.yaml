@@ -123,3 +123,35 @@ models:
     base_accuracy: 0.82
     capability_vector: [0.85, 0.45, 0.60, 0.90]
     avg_latency_ms: 120
+
+  llama-3.3-70b-local:
+    display_name: "Meta Llama 3.3 70B Instruct (Local / vLLM)"
+    provider: "local_vllm"
+    cost_per_token: 0.00000050
+    base_accuracy: 0.95
+    capability_vector: [0.95, 0.93, 0.94, 0.85]
+    avg_latency_ms: 80
+
+  mistral-7b-local:
+    display_name: "Mistral 7B Instruct v0.3 (Local / vLLM)"
+    provider: "local_vllm"
+    cost_per_token: 0.00000020
+    base_accuracy: 0.86
+    capability_vector: [0.86, 0.82, 0.84, 0.92]
+    avg_latency_ms: 30
+
+  qwen-2.5-7b-local:
+    display_name: "Qwen 2.5 7B Instruct (Local / vLLM)"
+    provider: "local_vllm"
+    cost_per_token: 0.00000020
+    base_accuracy: 0.88
+    capability_vector: [0.88, 0.90, 0.87, 0.93]
+    avg_latency_ms: 28
+
+  phi-3.5-mini-local:
+    display_name: "Microsoft Phi-3.5 Mini Instruct (Local / vLLM)"
+    provider: "local_vllm"
+    cost_per_token: 0.00000010
+    base_accuracy: 0.84
+    capability_vector: [0.85, 0.80, 0.86, 0.95]
+    avg_latency_ms: 20
