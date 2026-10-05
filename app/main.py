@@ -141,27 +141,33 @@ async def chat_completions(request: ChatCompletionRequest):
         )
 
     # Stage 7: Dispatch to Selected Model Backend
-    actual_model_name = selected_model
+    target_routed_model = selected_model
+    actual_answering_model = selected_model
     cache_status = "EXACT_MISS_ROUTED"
+
     if "groq" in selected_model or "deepseek" in selected_model or selected_model == "routemem-auto":
         backend_client = groq_client
         cache_status = "GROQ_LPU_HIT"
         if "qwen" in selected_model or "coder" in selected_model:
-            actual_model_name = "qwen/qwen3.8-27b"
+            actual_answering_model = "qwen/qwen3.8-27b"
         elif "20b" in selected_model or "8b" in selected_model:
-            actual_model_name = "openai/gpt-oss-20b"
+            actual_answering_model = "openai/gpt-oss-20b"
         else:
-            actual_model_name = "openai/gpt-oss-120b"
+            actual_answering_model = "openai/gpt-oss-120b"
     elif "gemini" in selected_model:
         backend_client = gemini_client
         cache_status = "GEMINI_API_HIT"
-        actual_model_name = "gemini-3.8-flash"
+        actual_answering_model = "gemini-3.8-flash"
     elif "claude" in selected_model or "gpt" in selected_model or "o1" in selected_model or "o3" in selected_model:
         backend_client = cloud_client
         cache_status = "CLOUD_FALLBACK"
+        actual_answering_model = "openai/gpt-oss-120b"
     else:
         backend_client = vllm_client
         cache_status = "EXACT_MISS_SLM_HIT"
+        actual_answering_model = "openai/gpt-oss-20b"
+
+    actual_model_name = actual_answering_model
 
     if request.stream:
         async def stream_generator():
