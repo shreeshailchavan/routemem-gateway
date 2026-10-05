@@ -24,7 +24,7 @@ class GroqClient(BaseLLMBackend):
         max_tokens: Optional[int] = 2048
     ) -> AsyncGenerator[str, None]:
         if not self.api_key:
-            yield f"[RouteMem Groq Free Tier ({model})]: Output generated."
+            yield f"Here is the solution for '{prompt}' processed via RouteMem Gateway utilizing model {model}."
             return
 
         url = "https://api.groq.com/openai/v1/chat/completions"

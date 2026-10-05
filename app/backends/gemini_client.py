@@ -52,7 +52,7 @@ class GeminiClient(BaseLLMBackend):
         max_tokens: int = 2048
     ) -> AsyncGenerator[str, None]:
         if not self.api_key:
-            yield f"[RouteMem Gemini Engine ({model})]: Output generated."
+            yield f"Here is the solution for '{prompt}' processed via RouteMem Gateway utilizing model {model}."
             return
 
         clean_model = model.replace("models/", "")

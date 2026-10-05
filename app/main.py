@@ -142,7 +142,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
     # Stage 7: Dispatch to Selected Model Backend
     actual_model_name = selected_model
-    if "groq" in selected_model or "deepseek" in selected_model:
+    if "groq" in selected_model or "deepseek" in selected_model or selected_model == "routemem-auto":
         backend_client = groq_client
         cache_status = "GROQ_LPU_HIT"
         if "deepseek" in selected_model or "r1" in selected_model:

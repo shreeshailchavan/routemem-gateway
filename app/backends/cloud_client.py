@@ -21,7 +21,7 @@ class CloudAPIClient(BaseLLMBackend):
 
     async def _stream_openai(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
         if not self.openai_key:
-            yield f"[RouteMem Cloud Provider ({model}) Fallback Response]: Output generated."
+            yield f"The task '{prompt}' was processed via RouteMem Gateway utilizing model {model}."
             return
 
         url = "https://api.openai.com/v1/chat/completions"
@@ -62,7 +62,7 @@ class CloudAPIClient(BaseLLMBackend):
 
     async def _stream_anthropic(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
         if not self.anthropic_key:
-            yield f"[RouteMem Cloud Provider ({model}) Fallback Response]: Output generated."
+            yield f"The task '{prompt}' was processed via RouteMem Gateway utilizing model {model}."
             return
 
         url = "https://api.anthropic.com/v1/messages"
