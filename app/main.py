@@ -206,6 +206,8 @@ async def chat_completions(request: ChatCompletionRequest):
             confidence=round(1.0 - difficulty_score, 2),
             token_reduction_ratio=token_reduction_ratio,
             cost_usd=0.000002 if cache_status != "CLOUD_FALLBACK" else 0.000350,
+            target_routed_model=selected_model,
+            actual_answering_model=actual_model_name,
             routed_model=actual_model_name
         )
     )

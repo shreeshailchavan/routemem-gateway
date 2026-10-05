@@ -103,8 +103,8 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
             # Parse Response
             answer = res_data["choices"][0]["message"]["content"]
             meta = res_data.get("routemem_metadata", {})
-            cache_status = meta.get("cache_status", "UNKNOWN")
-            routed_model = meta.get("routed_model", res_data.get("model", "unknown"))
+            target_model = meta.get("target_routed_model", "routemem-auto")
+            answering_model = meta.get("actual_answering_model", meta.get("routed_model", res_data.get("model", "unknown")))
             ttft_ms = meta.get("ttft_ms", roundtrip_ms)
             latency_ms = meta.get("latency_ms", roundtrip_ms)
             confidence = meta.get("confidence", 0.95)
@@ -112,7 +112,7 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
             cost_usd = meta.get("cost_usd", 0.0)
 
             # Render Answer Box
-            answer_title = f"RESPONSE [Model: {routed_model} | Status: {cache_status}]"
+            answer_title = f"RESPONSE [Answering Model: {answering_model} | Target: {target_model} | Status: {cache_status}]"
             render_box(answer_title, answer, border_color=GREEN if "HIT" in cache_status else BLUE)
 
             # Render Telemetry Summary
@@ -125,10 +125,13 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
             elif "SEMANTIC" in cache_status:
                 badge = f"{GREEN}{BOLD}[TIER-1 QDRANT SEMANTIC HIT]{RESET}"
             else:
-                badge = f"{YELLOW}{BOLD}[LIVE ROUTED COMPLETION: {routed_model}]{RESET}"
+                badge = f"{YELLOW}{BOLD}[LIVE COMPLETION: {answering_model}]{RESET}"
 
             print(f"  • {BOLD}Cache Status:{RESET}         {badge}")
-            print(f"  • {BOLD}Routed Model:{RESET}         {CYAN}{routed_model}{RESET}")
+            print(f"  • {BOLD}Target Model (Router):{RESET}{CYAN}{target_model}{RESET}")
+            print(f"  • {BOLD}Answering Model (LLM):{RESET}{GREEN}{BOLD}{answering_model}{RESET}")
+            if target_model != answering_model and "HIT" not in cache_status:
+                print(f"  • {BOLD}Fallback Execution:{RESET}   {ORANGE}{target_model} ➔ {answering_model} (Groq LPU Active Tier){RESET}")
             print(f"  • {BOLD}Routing Confidence:{RESET}   {GREEN}{confidence * 100:.1f}%{RESET}")
             print(f"  • {BOLD}Time to First Token:{RESET}  {GREEN if ttft_ms < 15 else YELLOW}{ttft_ms} ms{RESET}")
             print(f"  • {BOLD}Latency (End-to-End):{RESET} {WHITE}{latency_ms} ms{RESET}")

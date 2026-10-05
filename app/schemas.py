@@ -25,6 +25,8 @@ class RouteMemMetadata(BaseModel):
     confidence: float = 0.95
     token_reduction_ratio: float = 0.0
     cost_usd: float = 0.0
+    target_routed_model: str = "routemem-auto"
+    actual_answering_model: str = "routemem-auto"
     routed_model: str = "routemem-auto"
 
 class UsageInfo(BaseModel):
@@ -75,8 +77,12 @@ class ChatCompletionResponse(BaseModel):
             routemem_metadata=RouteMemMetadata(
                 cache_status=cache_status,
                 ttft_ms=round(ttft_ms, 2),
+                latency_ms=round(ttft_ms, 2),
+                confidence=1.0,
                 token_reduction_ratio=0.0,
                 cost_usd=0.0,
+                target_routed_model="routemem-cache-lookup",
+                actual_answering_model=model_name,
                 routed_model=model_name
             )
         )
