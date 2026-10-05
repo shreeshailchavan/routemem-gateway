@@ -1,112 +1,30 @@
 models:
-  # --- OpenAI Vendor Models (Paid & Premium) ---
-  gpt-4o:
-    display_name: "OpenAI GPT-4o (Omni Flagship)"
-    provider: "openai"
-    cost_per_token: 0.0000025
-    base_accuracy: 0.96
-    capability_vector: [0.97, 0.94, 0.93, 0.75]
-    avg_latency_ms: 380
-
-  gpt-4o-mini:
-    display_name: "OpenAI GPT-4o-mini (Fast Efficiency)"
-    provider: "openai"
-    cost_per_token: 0.00000015
-    base_accuracy: 0.88
-    capability_vector: [0.88, 0.82, 0.85, 0.90]
-    avg_latency_ms: 180
-
-  o1:
-    display_name: "OpenAI o1 (Deep Reasoning)"
-    provider: "openai"
-    cost_per_token: 0.00001500
-    base_accuracy: 0.99
-    capability_vector: [0.99, 0.98, 0.99, 0.30]
-    avg_latency_ms: 850
-
-  o3-mini:
-    display_name: "OpenAI o3-mini (High-Speed Reasoning)"
-    provider: "openai"
-    cost_per_token: 0.00000110
-    base_accuracy: 0.97
-    capability_vector: [0.98, 0.96, 0.97, 0.65]
-    avg_latency_ms: 350
-
-  gpt-5-preview:
-    display_name: "OpenAI GPT-5 / Next-Gen Frontier"
-    provider: "openai"
-    cost_per_token: 0.00000500
-    base_accuracy: 0.995
-    capability_vector: [0.995, 0.99, 0.98, 0.70]
-    avg_latency_ms: 420
-
-  # --- Anthropic Vendor Models (Premium) ---
-  claude-3.5-sonnet:
-    display_name: "Anthropic Claude 3.5 Sonnet (Coding Leader)"
-    provider: "anthropic"
-    cost_per_token: 0.00000300
-    base_accuracy: 0.98
-    capability_vector: [0.98, 0.99, 0.96, 0.70]
-    avg_latency_ms: 450
-
-  claude-3-opus:
-    display_name: "Anthropic Claude 3 Opus (Complex Analysis)"
-    provider: "anthropic"
-    cost_per_token: 0.00001500
-    base_accuracy: 0.99
-    capability_vector: [0.99, 0.97, 0.98, 0.40]
-    avg_latency_ms: 950
-
-  claude-3.5-haiku:
-    display_name: "Anthropic Claude 3.5 Haiku (Compact Fast)"
-    provider: "anthropic"
-    cost_per_token: 0.00000080
-    base_accuracy: 0.90
-    capability_vector: [0.90, 0.88, 0.89, 0.92]
-    avg_latency_ms: 150
-
-  claude-3.7-sonnet:
-    display_name: "Anthropic Claude 3.7 Sonnet (Hybrid Thinking)"
-    provider: "anthropic"
-    cost_per_token: 0.00000300
-    base_accuracy: 0.992
-    capability_vector: [0.99, 0.995, 0.98, 0.60]
-    avg_latency_ms: 500
-
-  # --- Google Gemini Vendor Models (Free & Premium Pro) ---
-  gemini-2.5-flash:
-    display_name: "Google Gemini 2.5 Flash"
+  # --- Google AI Studio Vendor (Active & Non-Discontinued) ---
+  gemini-3.8-flash:
+    display_name: "Google Gemini 3.8 Flash (Active Standard)"
     provider: "gemini"
     cost_per_token: 0.0
-    base_accuracy: 0.94
-    capability_vector: [0.94, 0.90, 0.88, 0.98]
+    base_accuracy: 0.95
+    capability_vector: [0.95, 0.92, 0.90, 0.98]
+    avg_latency_ms: 60
+
+  gemini-3.5-flash:
+    display_name: "Google Gemini 3.5 Flash (Active)"
+    provider: "gemini"
+    cost_per_token: 0.0
+    base_accuracy: 0.93
+    capability_vector: [0.93, 0.89, 0.88, 0.96]
     avg_latency_ms: 65
 
-  gemini-2.0-flash:
-    display_name: "Google Gemini 2.0 Flash (Multimodal)"
+  gemini-3.5-flash-lite:
+    display_name: "Google Gemini 3.5 Flash-Lite (High Speed)"
     provider: "gemini"
-    cost_per_token: 0.00000010
-    base_accuracy: 0.93
-    capability_vector: [0.93, 0.89, 0.87, 0.97]
-    avg_latency_ms: 70
+    cost_per_token: 0.0
+    base_accuracy: 0.88
+    capability_vector: [0.88, 0.84, 0.85, 0.99]
+    avg_latency_ms: 35
 
-  gemini-1.5-pro:
-    display_name: "Google Gemini 1.5 Pro (2M Context)"
-    provider: "gemini"
-    cost_per_token: 0.00000125
-    base_accuracy: 0.96
-    capability_vector: [0.96, 0.92, 0.94, 0.80]
-    avg_latency_ms: 180
-
-  gemini-2.0-pro-exp:
-    display_name: "Google Gemini 2.0 Pro Experimental"
-    provider: "gemini"
-    cost_per_token: 0.00000200
-    base_accuracy: 0.985
-    capability_vector: [0.98, 0.97, 0.96, 0.75]
-    avg_latency_ms: 220
-
-  # --- Groq LPU High-Speed Vendor (Free API Tier) ---
+  # --- Groq LPU High-Speed Vendor (Active & Non-Discontinued) ---
   llama-3.3-70b-versatile:
     display_name: "Groq Llama 3.3 70B Versatile"
     provider: "groq"
@@ -139,23 +57,65 @@ models:
     capability_vector: [0.98, 0.95, 0.98, 0.90]
     avg_latency_ms: 85
 
-  # --- Mistral AI & Open-Weight Local (vLLM) ---
-  mistral-large-2411:
-    display_name: "Mistral Large 2411"
-    provider: "mistral"
-    cost_per_token: 0.00000200
-    base_accuracy: 0.955
-    capability_vector: [0.96, 0.93, 0.94, 0.80]
-    avg_latency_ms: 320
+  # --- OpenAI Vendor Models (Active & Non-Discontinued) ---
+  gpt-4o:
+    display_name: "OpenAI GPT-4o (Active Flagship)"
+    provider: "openai"
+    cost_per_token: 0.0000025
+    base_accuracy: 0.96
+    capability_vector: [0.97, 0.94, 0.93, 0.75]
+    avg_latency_ms: 380
 
-  codestral-2501:
-    display_name: "Mistral Codestral 2501"
-    provider: "mistral"
-    cost_per_token: 0.00000100
-    base_accuracy: 0.94
-    capability_vector: [0.93, 0.98, 0.91, 0.88]
-    avg_latency_ms: 190
+  gpt-4o-mini:
+    display_name: "OpenAI GPT-4o-mini (Active Efficient)"
+    provider: "openai"
+    cost_per_token: 0.00000015
+    base_accuracy: 0.88
+    capability_vector: [0.88, 0.82, 0.85, 0.90]
+    avg_latency_ms: 180
 
+  o1:
+    display_name: "OpenAI o1 (Active Reasoning)"
+    provider: "openai"
+    cost_per_token: 0.00001500
+    base_accuracy: 0.99
+    capability_vector: [0.99, 0.98, 0.99, 0.30]
+    avg_latency_ms: 850
+
+  o3-mini:
+    display_name: "OpenAI o3-mini (Active Fast Reasoning)"
+    provider: "openai"
+    cost_per_token: 0.00000110
+    base_accuracy: 0.97
+    capability_vector: [0.98, 0.96, 0.97, 0.65]
+    avg_latency_ms: 350
+
+  # --- Anthropic Vendor Models (Active & Non-Discontinued) ---
+  claude-3-7-sonnet:
+    display_name: "Anthropic Claude 3.7 Sonnet (Hybrid Thinking)"
+    provider: "anthropic"
+    cost_per_token: 0.00000300
+    base_accuracy: 0.992
+    capability_vector: [0.99, 0.995, 0.98, 0.60]
+    avg_latency_ms: 500
+
+  claude-3-5-sonnet:
+    display_name: "Anthropic Claude 3.5 Sonnet (Coding Leader)"
+    provider: "anthropic"
+    cost_per_token: 0.00000300
+    base_accuracy: 0.98
+    capability_vector: [0.98, 0.99, 0.96, 0.70]
+    avg_latency_ms: 450
+
+  claude-3-5-haiku:
+    display_name: "Anthropic Claude 3.5 Haiku (Compact Fast)"
+    provider: "anthropic"
+    cost_per_token: 0.00000080
+    base_accuracy: 0.90
+    capability_vector: [0.90, 0.88, 0.89, 0.92]
+    avg_latency_ms: 150
+
+  # --- Open-Weight Local Engines (vLLM) ---
   llama-3.1-8b-local:
     display_name: "Meta Llama 3.1 8B Instruct (Local vLLM)"
     provider: "local_vllm"
