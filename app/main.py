@@ -65,11 +65,12 @@ groq_client = GroqClient()
 deepseek_client = DeepSeekClient()
 gemini_client = GeminiClient()
 
-async def sync_background_state(system_prompt: str, user_prompt: str, response_text: str):
-    """Stage 8: Non-blocking background state sync across Redis, Qdrant & Zep."""
+async def sync_background_state(system_prompt: str, user_prompt: str, response_text: str, session_id: str = "default-session"):
+    """Stage 8: Non-blocking background state sync across Redis, Qdrant & Zep Graphiti."""
     try:
         await exact_cache.set(system_prompt, user_prompt, response_text)
         await semantic_cache.index(user_prompt, response_text)
+        await zep_memory.add_session_interaction(session_id, user_prompt, response_text)
     except Exception as e:
         logger.error(f"Background state sync error: {e}")
 
@@ -90,6 +91,7 @@ async def chat_completions(request: ChatCompletionRequest):
     REQUEST_COUNT.labels(method="POST", endpoint="/v1/chat/completions", status="200").inc()
 
     # Stage 1: Ingestion & Extraction
+    session_id = request.session_id or "default-session"
     system_prompt = next((m.content for m in request.messages if m.role == "system"), "")
     user_messages = [m.content for m in request.messages if m.role == "user"]
     if not user_messages:
@@ -125,6 +127,10 @@ async def chat_completions(request: ChatCompletionRequest):
     # Stage 4: Shared Memory Context & Token Compression (5ms)
     compressed_prompt, token_reduction_ratio = compressor.compress(user_prompt)
     TOKEN_REDUCTION_GAUGE.set(token_reduction_ratio)
+
+    session_facts = await zep_memory.get_session_context(session_id)
+    if session_facts:
+        system_prompt = f"{system_prompt}\n\n[Retrieved Session Knowledge Graph Memory]:\n{session_facts}".strip()
 
     # Stage 5: Intent & Difficulty Profiling (<3ms)
     difficulty_score, task_intent = profiler.profile(compressed_prompt)
@@ -180,7 +186,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
             # Stage 8: Async Background Sync
             final_text = "".join(full_response)
-            asyncio.create_task(sync_background_state(system_prompt, user_prompt, final_text))
+            asyncio.create_task(sync_background_state(system_prompt, user_prompt, final_text, session_id=session_id))
 
         return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
@@ -190,7 +196,7 @@ async def chat_completions(request: ChatCompletionRequest):
     TTFT_HISTOGRAM.observe(ttft_ms / 1000.0)
 
     # Stage 8: Async Background Sync (0ms blocking)
-    asyncio.create_task(sync_background_state(system_prompt, user_prompt, full_response))
+    asyncio.create_task(sync_background_state(system_prompt, user_prompt, full_response, session_id=session_id))
 
     return ChatCompletionResponse(
         model=actual_model_name,

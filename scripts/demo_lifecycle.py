@@ -57,10 +57,10 @@ def render_box(title: str, content: str, border_color: str = CYAN):
         print(f"{border_color}│{RESET} {line:<{width-4}} {border_color}│{RESET}")
     print(footer)
 
-def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
+def execute_query_lifecycle(prompt: str, model: str = "routemem-auto", session_id: str = "demo-session"):
     start_wall_time = time.time()
     
-    print(f"\n{ORANGE}{BOLD}► DISPATCHING QUERY TO ROUTEMEM GATEWAY{RESET}")
+    print(f"\n{ORANGE}{BOLD}► DISPATCHING QUERY TO ROUTEMEM GATEWAY [Session: {session_id}]{RESET}")
     print(f"{GRAY}Prompt:{RESET} {WHITE}{ITALIC}\"{prompt}\"{RESET}")
     print(f"{GRAY}Requested Model Mode:{RESET} {CYAN}{model}{RESET}\n")
 
@@ -77,14 +77,16 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
     print(f"{MAGENTA}│   └── Searching Tier-1 Qdrant HNSW Semantic Vector Space...{RESET}")
     print(f"{MAGENTA}└── Status: Cache Scan Completed{RESET}")
 
-    # Stage 3: Payload Dispatch
-    print(f"\n{YELLOW}┌── Stage 3 & 4: Context Compression & OmniRouter Solver{RESET}")
+    # Stage 3 & 4: Payload Dispatch
+    print(f"\n{YELLOW}┌── Stage 3 & 4: Zep Graphiti Memory & Context Compression{RESET}")
+    print(f"{YELLOW}│   ├── Retrieving Session Knowledge Graph Facts for {session_id}...{RESET}")
     print(f"{YELLOW}│   ├── Applying LLMLingua-2 Token Pruning...{RESET}")
     print(f"{YELLOW}└── Dispatching to Backend LLM Engine...{RESET}\n")
 
     payload = {
         "messages": [{"role": "user", "content": prompt}],
-        "model": model
+        "model": model,
+        "session_id": session_id
     }
     
     req = urllib.request.Request(
@@ -152,13 +154,15 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
 
 def main():
     print_banner()
+    session_id = "multi-turn-session-101"
     
     if len(sys.argv) > 1:
         query = " ".join(sys.argv[1:])
-        execute_query_lifecycle(query)
+        execute_query_lifecycle(query, session_id=session_id)
         return
 
-    print(f"{WHITE}{BOLD}Type a prompt to test RouteMem query lifecycle (or type 'exit' / 'q' to quit):{RESET}\n")
+    print(f"{WHITE}{BOLD}Type a prompt to test RouteMem multi-turn memory graph (or type 'exit' / 'q' to quit):{RESET}")
+    print(f"{GRAY}Active Session ID: {CYAN}{session_id}{RESET}\n")
     
     while True:
         try:
@@ -169,7 +173,7 @@ def main():
                 print(f"\n{GRAY}Exiting RouteMem CLI. Goodbye!{RESET}\n")
                 break
             
-            execute_query_lifecycle(prompt)
+            execute_query_lifecycle(prompt, session_id=session_id)
             
         except (KeyboardInterrupt, EOFError):
             print(f"\n\n{GRAY}Exiting RouteMem CLI. Goodbye!{RESET}\n")
