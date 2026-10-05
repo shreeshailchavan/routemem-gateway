@@ -35,10 +35,20 @@ from app.utils.metrics import REQUEST_COUNT, CACHE_HITS, TTFT_HISTOGRAM, TOKEN_R
 
 logger = get_logger("routemem_gateway")
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="RouteMem AI Gateway",
     description="Enterprise Multi-LLM Proxy Gateway with 4-Tier Memory & Dynamic Routing",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Service Initializations
