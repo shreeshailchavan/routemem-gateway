@@ -128,12 +128,15 @@ async def chat_completions(request: ChatCompletionRequest):
     difficulty_score, task_intent = profiler.profile(compressed_prompt)
 
     # Stage 6: Capability Space & Budget Optimization (4ms)
-    selected_model = router.select_model(
-        difficulty=difficulty_score,
-        intent=task_intent,
-        max_cost_target=request.max_cost_target,
-        quality_target=request.quality_target
-    )
+    if request.model and request.model != "routemem-auto":
+        selected_model = request.model
+    else:
+        selected_model = router.select_model(
+            difficulty=difficulty_score,
+            intent=task_intent,
+            max_cost_target=request.max_cost_target,
+            quality_target=request.quality_target
+        )
 
     # Stage 7: Dispatch to Selected Model Backend
     actual_model_name = selected_model
