@@ -105,7 +105,8 @@ async def chat_completions(request: ChatCompletionRequest):
         return ChatCompletionResponse.from_cache(
             content=exact_hit,
             cache_status="EXACT_HIT",
-            ttft_ms=ttft_ms
+            ttft_ms=ttft_ms,
+            model_name="redis-exact-hash-cache"
         )
 
     # Stage 3: Tier-1 Semantic Vector Cache Check (<15ms)
@@ -117,7 +118,8 @@ async def chat_completions(request: ChatCompletionRequest):
         return ChatCompletionResponse.from_cache(
             content=semantic_hit.response,
             cache_status="SEMANTIC_HIT",
-            ttft_ms=ttft_ms
+            ttft_ms=ttft_ms,
+            model_name="qdrant-semantic-vector-cache"
         )
 
     # Stage 4: Shared Memory Context & Token Compression (5ms)
@@ -154,7 +156,7 @@ async def chat_completions(request: ChatCompletionRequest):
     elif "gemini" in selected_model:
         backend_client = gemini_client
         cache_status = "GEMINI_API_HIT"
-        actual_model_name = "gemini-2.5-flash"
+        actual_model_name = "gemini-3.8-flash"
     elif "claude" in selected_model or "gpt" in selected_model or "o1" in selected_model or "o3" in selected_model:
         backend_client = cloud_client
         cache_status = "CLOUD_FALLBACK"
@@ -167,7 +169,7 @@ async def chat_completions(request: ChatCompletionRequest):
             full_response = []
             async for token in backend_client.dispatch_stream(actual_model_name, compressed_prompt, system_prompt=system_prompt):
                 full_response.append(token)
-                chunk_data = json.dumps({"choices": [{"delta": {"content": token}}]})
+                chunk_data = json.dumps({"choices": [{"delta": {"content": token}}], "model": actual_model_name})
                 yield f"data: {chunk_data}\n\n"
             yield "data: [DONE]\n\n"
 
@@ -186,7 +188,7 @@ async def chat_completions(request: ChatCompletionRequest):
     asyncio.create_task(sync_background_state(system_prompt, user_prompt, full_response))
 
     return ChatCompletionResponse(
-        model=selected_model,
+        model=actual_model_name,
         choices=[
             Choice(
                 index=0,
@@ -204,6 +206,6 @@ async def chat_completions(request: ChatCompletionRequest):
             ttft_ms=round(ttft_ms, 2),
             token_reduction_ratio=token_reduction_ratio,
             cost_usd=0.000002 if cache_status != "CLOUD_FALLBACK" else 0.000350,
-            routed_model=selected_model
+            routed_model=actual_model_name
         )
     )
