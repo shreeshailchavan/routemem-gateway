@@ -187,10 +187,34 @@ async def chat_completions(request: ChatCompletionRequest):
     if request.stream:
         async def stream_generator():
             full_response = []
+            first_token_time = None
             async for token in backend_client.dispatch_stream(actual_model_name, compressed_prompt, system_prompt=system_prompt):
+                if first_token_time is None:
+                    first_token_time = (time.perf_counter() - start_time) * 1000
+                    TTFT_HISTOGRAM.observe(first_token_time / 1000.0)
                 full_response.append(token)
                 chunk_data = json.dumps({"choices": [{"delta": {"content": token}}], "model": actual_model_name})
                 yield f"data: {chunk_data}\n\n"
+
+            ttft_ms = round(first_token_time or ((time.perf_counter() - start_time) * 1000), 2)
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            meta_chunk = json.dumps({
+                "routemem_metadata": {
+                    "cache_status": cache_status,
+                    "ttft_ms": ttft_ms,
+                    "latency_ms": latency_ms,
+                    "confidence": round(1.0 - (difficulty_score * 0.25), 2),
+                    "token_reduction_ratio": token_reduction_ratio,
+                    "cost_usd": 0.000000 if "LOCAL" in cache_status or "CACHE" in cache_status else 0.000002,
+                    "target_routed_model": target_routed_model,
+                    "actual_answering_model": actual_model_name,
+                    "routed_model": actual_model_name,
+                    "kg_facts_retrieved": kg_facts_retrieved_count,
+                    "kg_memory_used": kg_memory_used,
+                    "is_fallback": target_routed_model != actual_model_name
+                }
+            })
+            yield f"data: {meta_chunk}\n\n"
             yield "data: [DONE]\n\n"
 
             # Stage 8: Async Background Sync

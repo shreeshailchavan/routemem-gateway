@@ -57,22 +57,22 @@ def render_box(title: str, content: str, border_color: str = CYAN):
         print(f"{border_color}│{RESET} {line:<{width-4}} {border_color}│{RESET}")
     print(footer)
 
-def execute_query_lifecycle(prompt: str, model: str = "routemem-auto", session_id: str = "demo-session"):
+def execute_query_lifecycle(prompt: str, model: str = "routemem-auto", session_id: str = "demo-session", stream: bool = True):
     start_wall_time = time.time()
     
     print(f"\n{ORANGE}{BOLD}► DISPATCHING QUERY TO ROUTEMEM GATEWAY [Session: {session_id}]{RESET}")
     print(f"{GRAY}Prompt:{RESET} {WHITE}{ITALIC}\"{prompt}\"{RESET}")
-    print(f"{GRAY}Requested Model Mode:{RESET} {CYAN}{model}{RESET}\n")
+    print(f"{GRAY}Requested Model Mode:{RESET} {CYAN}{model}{RESET} | {GRAY}Streaming:{RESET} {GREEN}ENABLED{RESET}\n")
 
     # Stage 1: Pipeline Initialization
     print(f"{BLUE}┌── Stage 1: DeBERTa-v3 Intent & Difficulty Profiling{RESET}")
-    time.sleep(0.08) # Visual pulse
+    time.sleep(0.04) # Visual pulse
     print(f"{BLUE}│   ├── Extracting AST features & code density...{RESET}")
     print(f"{BLUE}└── Status: Profile Computed{RESET}")
 
     # Stage 2: Cache Inspection
     print(f"\n{MAGENTA}┌── Stage 2: Multi-Tier Memory & Cache Inspection{RESET}")
-    time.sleep(0.08)
+    time.sleep(0.04)
     print(f"{MAGENTA}│   ├── Checking Tier-0 Redis SHA-256 Exact Cache...{RESET}")
     print(f"{MAGENTA}│   └── Searching Tier-1 Qdrant HNSW Semantic Vector Space...{RESET}")
     print(f"{MAGENTA}└── Status: Cache Scan Completed{RESET}")
@@ -86,7 +86,8 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto", session_i
     payload = {
         "messages": [{"role": "user", "content": prompt}],
         "model": model,
-        "session_id": session_id
+        "session_id": session_id,
+        "stream": stream
     }
     
     req = urllib.request.Request(
@@ -99,27 +100,67 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto", session_i
         t0 = time.time()
         with urllib.request.urlopen(req) as resp:
             t1 = time.time()
-            res_data = json.loads(resp.read().decode('utf-8'))
             roundtrip_ms = round((t1 - t0) * 1000, 2)
             
-            # Parse Response
-            answer = res_data["choices"][0]["message"]["content"]
-            meta = res_data.get("routemem_metadata", {})
-            cache_status = meta.get("cache_status", "UNKNOWN")
-            target_model = meta.get("target_routed_model", "routemem-auto")
-            answering_model = meta.get("actual_answering_model", meta.get("routed_model", res_data.get("model", "unknown")))
-            ttft_ms = meta.get("ttft_ms", roundtrip_ms)
-            latency_ms = meta.get("latency_ms", roundtrip_ms)
-            confidence = meta.get("confidence", 0.95)
-            compression_ratio = meta.get("token_reduction_ratio", 0.0)
-            cost_usd = meta.get("cost_usd", 0.0)
-            kg_facts_retrieved = meta.get("kg_facts_retrieved", 0)
-            kg_memory_used = meta.get("kg_memory_used", False)
-            is_fallback = meta.get("is_fallback", False)
+            if stream and "text/event-stream" in resp.headers.get("Content-Type", ""):
+                print(f"{GREEN}{BOLD}┌─ STREAMING RESPONSE (Real-Time Backend Generator) ──────────────────────────────────┐{RESET}")
+                tokens_list = []
+                first_token_time = None
+                meta = {}
+                
+                for line_bytes in resp:
+                    line = line_bytes.decode('utf-8').strip()
+                    if line.startswith("data: "):
+                        data_str = line[6:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                            if "routemem_metadata" in chunk:
+                                meta = chunk["routemem_metadata"]
+                                continue
+                            delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                            if delta:
+                                if first_token_time is None:
+                                    first_token_time = round((time.time() - t0) * 1000, 2)
+                                tokens_list.append(delta)
+                                sys.stdout.write(f"{WHITE}{delta}{RESET}")
+                                sys.stdout.flush()
+                        except json.JSONDecodeError:
+                            pass
+                
+                print(f"\n{GREEN}{BOLD}└─────────────────────────────────────────────────────────────────────────────────────┘{RESET}")
+                answer = "".join(tokens_list)
+                cache_status = meta.get("cache_status", "LIVE_STREAM")
+                target_model = meta.get("target_routed_model", model)
+                answering_model = meta.get("actual_answering_model", meta.get("routed_model", "stream-engine"))
+                ttft_ms = meta.get("ttft_ms", first_token_time or roundtrip_ms)
+                latency_ms = meta.get("latency_ms", round((time.time() - t0) * 1000, 2))
+                confidence = meta.get("confidence", 0.95)
+                compression_ratio = meta.get("token_reduction_ratio", 0.0)
+                cost_usd = meta.get("cost_usd", 0.0)
+                kg_facts_retrieved = meta.get("kg_facts_retrieved", 0)
+                kg_memory_used = meta.get("kg_memory_used", False)
+                is_fallback = meta.get("is_fallback", False)
+            else:
+                res_data = json.loads(resp.read().decode('utf-8'))
+                answer = res_data["choices"][0]["message"]["content"]
+                meta = res_data.get("routemem_metadata", {})
+                cache_status = meta.get("cache_status", "UNKNOWN")
+                target_model = meta.get("target_routed_model", "routemem-auto")
+                answering_model = meta.get("actual_answering_model", meta.get("routed_model", res_data.get("model", "unknown")))
+                ttft_ms = meta.get("ttft_ms", roundtrip_ms)
+                latency_ms = meta.get("latency_ms", roundtrip_ms)
+                confidence = meta.get("confidence", 0.95)
+                compression_ratio = meta.get("token_reduction_ratio", 0.0)
+                cost_usd = meta.get("cost_usd", 0.0)
+                kg_facts_retrieved = meta.get("kg_facts_retrieved", 0)
+                kg_memory_used = meta.get("kg_memory_used", False)
+                is_fallback = meta.get("is_fallback", False)
 
-            # Render Answer Box
-            answer_title = f"RESPONSE [Answering Model: {answering_model} | Target: {target_model} | Status: {cache_status}]"
-            render_box(answer_title, answer, border_color=GREEN if "HIT" in cache_status else BLUE)
+                # Render Answer Box
+                answer_title = f"RESPONSE [Answering Model: {answering_model} | Target: {target_model} | Status: {cache_status}]"
+                render_box(answer_title, answer, border_color=GREEN if "HIT" in cache_status else BLUE)
 
             # Render Telemetry Summary
             print(f"\n{CYAN}{BOLD}📊 ROUTEMEM FULL LIFECYCLE & RETRIEVAL TELEMETRY{RESET}")
