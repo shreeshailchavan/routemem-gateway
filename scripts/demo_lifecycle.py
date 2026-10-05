@@ -113,28 +113,40 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto", session_i
             confidence = meta.get("confidence", 0.95)
             compression_ratio = meta.get("token_reduction_ratio", 0.0)
             cost_usd = meta.get("cost_usd", 0.0)
+            kg_facts_retrieved = meta.get("kg_facts_retrieved", 0)
+            kg_memory_used = meta.get("kg_memory_used", False)
+            is_fallback = meta.get("is_fallback", False)
 
             # Render Answer Box
             answer_title = f"RESPONSE [Answering Model: {answering_model} | Target: {target_model} | Status: {cache_status}]"
             render_box(answer_title, answer, border_color=GREEN if "HIT" in cache_status else BLUE)
 
             # Render Telemetry Summary
-            print(f"\n{CYAN}{BOLD}📊 QUERY LIFECYCLE & TELEMETRY BREAKDOWN{RESET}")
+            print(f"\n{CYAN}{BOLD}📊 ROUTEMEM FULL LIFECYCLE & RETRIEVAL TELEMETRY{RESET}")
             print(f"{GRAY}─────────────────────────────────────────────────────────────────────────────{RESET}")
             
-            # Cache Status Badge
-            if "EXACT" in cache_status:
-                badge = f"{GREEN}{BOLD}[TIER-0 REDIS EXACT CACHE HIT]{RESET}"
-            elif "SEMANTIC" in cache_status:
-                badge = f"{GREEN}{BOLD}[TIER-1 QDRANT SEMANTIC HIT]{RESET}"
+            # Cache & Engine Badge
+            if cache_status == "EXACT_HIT":
+                badge = f"{GREEN}{BOLD}[TIER-0 REDIS SHA-256 EXACT HIT]{RESET}"
+            elif cache_status == "SEMANTIC_HIT":
+                badge = f"{GREEN}{BOLD}[TIER-1 QDRANT HNSW SEMANTIC HIT]{RESET}"
+            elif cache_status == "LOCAL_SLM_HIT":
+                badge = f"{CYAN}{BOLD}[NATIVE LOCAL SLM: {answering_model}]{RESET}"
             else:
-                badge = f"{YELLOW}{BOLD}[LIVE COMPLETION: {answering_model}]{RESET}"
+                badge = f"{YELLOW}{BOLD}[CLOUD/GROQ LPU COMPLETION: {answering_model}]{RESET}"
 
-            print(f"  • {BOLD}Cache Status:{RESET}         {badge}")
+            # KG Memory Badge
+            if kg_memory_used:
+                kg_badge = f"{GREEN}{BOLD}ACTIVE ({kg_facts_retrieved} Temporal Graph Facts Retrieved){RESET}"
+            else:
+                kg_badge = f"{GRAY}INACTIVE (No Session Facts Required){RESET}"
+
+            print(f"  • {BOLD}Retrieval Status:{RESET}      {badge}")
+            print(f"  • {BOLD}Zep Graphiti KG Memory:{RESET}{kg_badge}")
             print(f"  • {BOLD}Target Model (Router):{RESET}{CYAN}{target_model}{RESET}")
             print(f"  • {BOLD}Answering Model (LLM):{RESET}{GREEN}{BOLD}{answering_model}{RESET}")
-            if target_model != answering_model and "HIT" not in cache_status:
-                print(f"  • {BOLD}Fallback Execution:{RESET}   {ORANGE}{target_model} ➔ {answering_model} (Groq LPU Active Tier){RESET}")
+            if is_fallback:
+                print(f"  • {BOLD}Fallback Execution:{RESET}   {ORANGE}{target_model} ➔ {answering_model} (Active Tier Fallback){RESET}")
             print(f"  • {BOLD}Routing Confidence:{RESET}   {GREEN}{confidence * 100:.1f}%{RESET}")
             print(f"  • {BOLD}Time to First Token:{RESET}  {GREEN if ttft_ms < 15 else YELLOW}{ttft_ms} ms{RESET}")
             print(f"  • {BOLD}Latency (End-to-End):{RESET} {WHITE}{latency_ms} ms{RESET}")

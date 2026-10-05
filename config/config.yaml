@@ -13,7 +13,7 @@ cache:
     collection_name: "routemem_semantic_cache"
     embedding_model: "BAAI/bge-small-en-v1.5"
     vector_dimension: 384
-    similarity_threshold: 0.95
+    similarity_threshold: 0.85
 
 memory:
   compression:

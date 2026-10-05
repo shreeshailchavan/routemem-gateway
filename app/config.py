@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     exact_cache_enabled: bool = Field(default=True, validation_alias="EXACT_CACHE_ENABLED")
     exact_cache_ttl_seconds: int = Field(default=86400, validation_alias="EXACT_CACHE_TTL_SECONDS")
     semantic_cache_enabled: bool = Field(default=True, validation_alias="SEMANTIC_CACHE_ENABLED")
-    semantic_cache_threshold: float = Field(default=0.95, validation_alias="SEMANTIC_CACHE_THRESHOLD")
+    semantic_cache_threshold: float = Field(default=0.85, validation_alias="SEMANTIC_CACHE_THRESHOLD")
     compression_enabled: bool = Field(default=True, validation_alias="COMPRESSION_ENABLED")
     compression_ratio: float = Field(default=0.80, validation_alias="COMPRESSION_RATIO")
     monthly_budget_limit_usd: float = Field(default=500.0, validation_alias="MONTHLY_BUDGET_LIMIT_USD")

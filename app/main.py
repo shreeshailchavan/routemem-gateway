@@ -32,6 +32,7 @@ from app.backends.deepseek_client import DeepSeekClient
 from app.backends.gemini_client import GeminiClient
 from app.utils.logger import get_logger
 from app.utils.metrics import REQUEST_COUNT, CACHE_HITS, TTFT_HISTOGRAM, TOKEN_REDUCTION_GAUGE
+from app.config import settings
 
 logger = get_logger("routemem_gateway")
 
@@ -112,7 +113,7 @@ async def chat_completions(request: ChatCompletionRequest):
         )
 
     # Stage 3: Tier-1 Semantic Vector Cache Check (<15ms)
-    semantic_hit = await semantic_cache.search(user_prompt, threshold=request.quality_target)
+    semantic_hit = await semantic_cache.search(user_prompt, threshold=settings.semantic_cache_threshold)
     if semantic_hit:
         ttft_ms = (time.perf_counter() - start_time) * 1000
         CACHE_HITS.labels(cache_type="semantic").inc()
@@ -129,7 +130,11 @@ async def chat_completions(request: ChatCompletionRequest):
     TOKEN_REDUCTION_GAUGE.set(token_reduction_ratio)
 
     session_facts = await zep_memory.get_session_context(session_id)
+    kg_facts_retrieved_count = 0
+    kg_memory_used = False
     if session_facts:
+        kg_facts_retrieved_count = len([f for f in session_facts.split('\n') if f.strip()])
+        kg_memory_used = True
         system_prompt = f"{system_prompt}\n\n[Retrieved Session Knowledge Graph Memory]:\n{session_facts}".strip()
 
     # Stage 5: Intent & Difficulty Profiling (<3ms)
@@ -151,7 +156,11 @@ async def chat_completions(request: ChatCompletionRequest):
     actual_answering_model = selected_model
     cache_status = "EXACT_MISS_ROUTED"
 
-    if "groq" in selected_model or "deepseek" in selected_model or selected_model == "routemem-auto":
+    if "local" in selected_model or "llama" in selected_model or "phi" in selected_model or "mistral" in selected_model:
+        backend_client = vllm_client
+        cache_status = "LOCAL_SLM_HIT"
+        actual_answering_model = selected_model
+    elif "groq" in selected_model or "deepseek" in selected_model:
         backend_client = groq_client
         cache_status = "GROQ_LPU_HIT"
         if "qwen" in selected_model or "coder" in selected_model:
@@ -170,8 +179,8 @@ async def chat_completions(request: ChatCompletionRequest):
         actual_answering_model = "openai/gpt-oss-120b"
     else:
         backend_client = vllm_client
-        cache_status = "EXACT_MISS_SLM_HIT"
-        actual_answering_model = "openai/gpt-oss-20b"
+        cache_status = "LOCAL_SLM_HIT"
+        actual_answering_model = selected_model
 
     actual_model_name = actual_answering_model
 
@@ -216,11 +225,14 @@ async def chat_completions(request: ChatCompletionRequest):
             cache_status=cache_status,
             ttft_ms=round(ttft_ms, 2),
             latency_ms=round(ttft_ms, 2),
-            confidence=round(1.0 - difficulty_score, 2),
+            confidence=round(1.0 - (difficulty_score * 0.25), 2),
             token_reduction_ratio=token_reduction_ratio,
-            cost_usd=0.000002 if cache_status != "CLOUD_FALLBACK" else 0.000350,
-            target_routed_model=selected_model,
+            cost_usd=0.000000 if "LOCAL" in cache_status or "CACHE" in cache_status else 0.000002,
+            target_routed_model=target_routed_model,
             actual_answering_model=actual_model_name,
-            routed_model=actual_model_name
+            routed_model=actual_model_name,
+            kg_facts_retrieved=kg_facts_retrieved_count,
+            kg_memory_used=kg_memory_used,
+            is_fallback=target_routed_model != actual_model_name
         )
     )

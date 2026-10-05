@@ -20,7 +20,7 @@ class ChatCompletionRequest(BaseModel):
     quality_target: Optional[float] = 0.95
 
 class RouteMemMetadata(BaseModel):
-    cache_status: str  # EXACT_HIT, SEMANTIC_HIT, EXACT_MISS_SLM_HIT, GROQ_LPU_HIT, GEMINI_API_HIT
+    cache_status: str  # EXACT_HIT, SEMANTIC_HIT, EXACT_MISS_SLM_HIT, GROQ_LPU_HIT, GEMINI_API_HIT, LOCAL_SLM_HIT
     ttft_ms: float
     latency_ms: float = 0.0
     confidence: float = 0.95
@@ -29,6 +29,9 @@ class RouteMemMetadata(BaseModel):
     target_routed_model: str = "routemem-auto"
     actual_answering_model: str = "routemem-auto"
     routed_model: str = "routemem-auto"
+    kg_facts_retrieved: int = 0
+    kg_memory_used: bool = False
+    is_fallback: bool = False
 
 class UsageInfo(BaseModel):
     prompt_tokens: int = 0
