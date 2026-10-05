@@ -10,7 +10,7 @@ class GroqClient(BaseLLMBackend):
     Supports model fallback cascade across active Groq LPU models.
     """
 
-    DEFAULT_FALLBACKS = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
+    DEFAULT_FALLBACKS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen-2.5-coder-32b", "deepseek-r1-distill-llama-70b"]
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or getattr(settings, "groq_api_key", "")

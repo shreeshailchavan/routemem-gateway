@@ -137,27 +137,22 @@ async def chat_completions(request: ChatCompletionRequest):
 
     # Stage 7: Dispatch to Selected Model Backend
     actual_model_name = selected_model
-    if "groq" in selected_model:
+    if "groq" in selected_model or "deepseek" in selected_model:
         backend_client = groq_client
-        cache_status = "GROQ_API_HIT"
-        if "qwen" in selected_model:
-            actual_model_name = "qwen/qwen3.8-27b"
-        elif "70b" in selected_model or "120b" in selected_model:
-            actual_model_name = "openai/gpt-oss-120b"
+        cache_status = "GROQ_LPU_HIT"
+        if "deepseek" in selected_model or "r1" in selected_model:
+            actual_model_name = "deepseek-r1-distill-llama-70b"
+        elif "qwen" in selected_model or "coder" in selected_model:
+            actual_model_name = "qwen-2.5-coder-32b"
+        elif "8b" in selected_model:
+            actual_model_name = "llama-3.1-8b-instant"
         else:
-            actual_model_name = "openai/gpt-oss-20b"
-    elif "deepseek" in selected_model:
-        backend_client = deepseek_client
-        cache_status = "DEEPSEEK_API_HIT"
-        if "r1" in selected_model:
-            actual_model_name = "deepseek-reasoner"
-        else:
-            actual_model_name = "deepseek-chat"
+            actual_model_name = "llama-3.3-70b-versatile"
     elif "gemini" in selected_model:
         backend_client = gemini_client
         cache_status = "GEMINI_API_HIT"
-        actual_model_name = "gemini-3.8-flash"
-    elif "claude" in selected_model or "gpt" in selected_model:
+        actual_model_name = "gemini-2.5-flash"
+    elif "claude" in selected_model or "gpt" in selected_model or "o1" in selected_model or "o3" in selected_model:
         backend_client = cloud_client
         cache_status = "CLOUD_FALLBACK"
     else:
