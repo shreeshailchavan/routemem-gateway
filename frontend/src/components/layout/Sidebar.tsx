@@ -70,23 +70,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             <div className="flex justify-between items-center text-zinc-400">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                gemini-3.8-flash
+                gemini-2.5-flash
               </span>
-              <span className="text-emerald-400 font-semibold">$0.0001/k</span>
+              <span className="text-emerald-400 font-semibold">Free API</span>
             </div>
             <div className="flex justify-between items-center text-zinc-400">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                gpt-oss-120b (Groq)
+                llama-3.3-70b (Groq)
               </span>
-              <span className="text-emerald-400 font-semibold">$0.0003/k</span>
+              <span className="text-emerald-400 font-semibold">Free LPU</span>
             </div>
             <div className="flex justify-between items-center text-zinc-400">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
-                qwen-27b (Groq)
+                qwen-2.5-coder (Groq)
               </span>
-              <span className="text-cyan-400 font-semibold">$0.0002/k</span>
+              <span className="text-cyan-400 font-semibold">Free LPU</span>
+            </div>
+            <div className="flex justify-between items-center text-zinc-400">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400"></span>
+                r1-distill-70b (Groq)
+              </span>
+              <span className="text-purple-400 font-semibold">Free LPU</span>
             </div>
           </div>
         </div>
