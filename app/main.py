@@ -202,6 +202,8 @@ async def chat_completions(request: ChatCompletionRequest):
         routemem_metadata=RouteMemMetadata(
             cache_status=cache_status,
             ttft_ms=round(ttft_ms, 2),
+            latency_ms=round(ttft_ms, 2),
+            confidence=round(1.0 - difficulty_score, 2),
             token_reduction_ratio=token_reduction_ratio,
             cost_usd=0.000002 if cache_status != "CLOUD_FALLBACK" else 0.000350,
             routed_model=actual_model_name

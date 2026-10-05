@@ -19,8 +19,10 @@ class ChatCompletionRequest(BaseModel):
     quality_target: Optional[float] = 0.95
 
 class RouteMemMetadata(BaseModel):
-    cache_status: str  # EXACT_HIT, SEMANTIC_HIT, EXACT_MISS_SLM_HIT, CLOUD_FALLBACK
+    cache_status: str  # EXACT_HIT, SEMANTIC_HIT, EXACT_MISS_SLM_HIT, GROQ_LPU_HIT, GEMINI_API_HIT
     ttft_ms: float
+    latency_ms: float = 0.0
+    confidence: float = 0.95
     token_reduction_ratio: float = 0.0
     cost_usd: float = 0.0
     routed_model: str = "routemem-auto"

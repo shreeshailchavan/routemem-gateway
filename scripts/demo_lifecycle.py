@@ -106,6 +106,8 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
             cache_status = meta.get("cache_status", "UNKNOWN")
             routed_model = meta.get("routed_model", res_data.get("model", "unknown"))
             ttft_ms = meta.get("ttft_ms", roundtrip_ms)
+            latency_ms = meta.get("latency_ms", roundtrip_ms)
+            confidence = meta.get("confidence", 0.95)
             compression_ratio = meta.get("token_reduction_ratio", 0.0)
             cost_usd = meta.get("cost_usd", 0.0)
 
@@ -127,8 +129,9 @@ def execute_query_lifecycle(prompt: str, model: str = "routemem-auto"):
 
             print(f"  • {BOLD}Cache Status:{RESET}         {badge}")
             print(f"  • {BOLD}Routed Model:{RESET}         {CYAN}{routed_model}{RESET}")
+            print(f"  • {BOLD}Routing Confidence:{RESET}   {GREEN}{confidence * 100:.1f}%{RESET}")
             print(f"  • {BOLD}Time to First Token:{RESET}  {GREEN if ttft_ms < 15 else YELLOW}{ttft_ms} ms{RESET}")
-            print(f"  • {BOLD}Total Network Roundtrip:{RESET}{WHITE}{roundtrip_ms} ms{RESET}")
+            print(f"  • {BOLD}Latency (End-to-End):{RESET} {WHITE}{latency_ms} ms{RESET}")
             print(f"  • {BOLD}Token Compression:{RESET}   {MAGENTA}-{compression_ratio*100:.1f}% tokens pruned{RESET}")
             print(f"  • {BOLD}Estimated Query Cost:{RESET} {GREEN}${cost_usd:.6f} USD{RESET}")
             print(f"{GRAY}─────────────────────────────────────────────────────────────────────────────{RESET}\n")

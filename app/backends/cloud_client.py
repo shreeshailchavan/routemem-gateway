@@ -21,7 +21,10 @@ class CloudAPIClient(BaseLLMBackend):
 
     async def _stream_openai(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
         if not self.openai_key:
-            yield f"The task '{prompt}' was processed via RouteMem Gateway utilizing model {model}."
+            from app.backends.groq_client import GroqClient
+            groq = GroqClient()
+            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt):
+                yield chunk
             return
 
         url = "https://api.openai.com/v1/chat/completions"
@@ -62,7 +65,10 @@ class CloudAPIClient(BaseLLMBackend):
 
     async def _stream_anthropic(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
         if not self.anthropic_key:
-            yield f"The task '{prompt}' was processed via RouteMem Gateway utilizing model {model}."
+            from app.backends.groq_client import GroqClient
+            groq = GroqClient()
+            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt):
+                yield chunk
             return
 
         url = "https://api.anthropic.com/v1/messages"
