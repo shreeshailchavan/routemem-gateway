@@ -60,40 +60,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           </nav>
         </div>
 
-        {/* Vendor Availability Card */}
+        {/* Vendor Availability Catalog Card */}
         <div className="p-3.5 rounded-xl glass-panel space-y-3">
-          <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-300">
-            <Layers className="h-4 w-4 text-purple-400" />
-            <span>Active Model Pool</span>
+          <div className="flex items-center justify-between text-xs font-semibold text-zinc-300">
+            <span className="flex items-center space-x-2">
+              <Layers className="h-4 w-4 text-purple-400" />
+              <span>Multi-Vendor Pool</span>
+            </span>
+            <span className="text-[10px] font-mono text-zinc-500">18 Models</span>
           </div>
           <div className="space-y-1.5 text-[11px] font-mono">
             <div className="flex justify-between items-center text-zinc-400">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                gemini-2.5-flash
+                Google Gemini 2.5/Pro
               </span>
-              <span className="text-emerald-400 font-semibold">Free API</span>
+              <span className="text-emerald-400 font-semibold">Free/Tier</span>
             </div>
             <div className="flex justify-between items-center text-zinc-400">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                llama-3.3-70b (Groq)
+                Groq LPU (Llama/Qwen)
               </span>
               <span className="text-emerald-400 font-semibold">Free LPU</span>
             </div>
             <div className="flex justify-between items-center text-zinc-400">
               <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
-                qwen-2.5-coder (Groq)
+                <span className="h-1.5 w-1.5 rounded-full bg-indigo-400"></span>
+                OpenAI (o1/o3/gpt-4o)
               </span>
-              <span className="text-cyan-400 font-semibold">Free LPU</span>
+              <span className="text-indigo-400 font-semibold">Premium</span>
             </div>
             <div className="flex justify-between items-center text-zinc-400">
               <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-400"></span>
-                r1-distill-70b (Groq)
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                Claude 3.5/3.7/Opus
               </span>
-              <span className="text-purple-400 font-semibold">Free LPU</span>
+              <span className="text-amber-400 font-semibold">Premium</span>
+            </div>
+            <div className="flex justify-between items-center text-zinc-400">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+                Mistral Large/Coder
+              </span>
+              <span className="text-cyan-400 font-semibold">Premium</span>
             </div>
           </div>
         </div>
@@ -106,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           <span>UniRoute 4D Optim</span>
         </div>
         <p className="text-zinc-500 leading-tight">
-          Dual Lagrangian constraint solver operating in &lt; 0.3ms overhead.
+          Dual Lagrangian solver optimizing quality, cost, and latency across 18 models.
         </p>
       </div>
     </aside>

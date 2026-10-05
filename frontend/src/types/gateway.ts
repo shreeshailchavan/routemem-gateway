@@ -1,6 +1,6 @@
 export type CacheStatus = "EXACT_HIT" | "SEMANTIC_HIT" | "MISS";
 export type RoutingStrategy = "BALANCED_OMNIROUTE" | "SPEED_FIRST" | "MAX_SAVINGS" | "QUALITY_MAX";
-export type VendorProvider = "Google AI Studio" | "Groq LPU" | "vLLM Local";
+export type VendorProvider = "Google AI Studio" | "Groq LPU" | "OpenAI Cloud" | "Anthropic Claude" | "Mistral AI" | "vLLM Local";
 
 export interface PipelineStageTrace {
   stageId: number;
