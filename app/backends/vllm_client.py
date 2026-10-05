@@ -42,7 +42,11 @@ class VLLMClient(BaseLLMBackend):
                             except json.JSONDecodeError:
                                 pass
         except Exception:
-            yield f"[RouteMem Local SLM ({model})]: Task completed."
+            # When local vLLM GPU worker is offline, route to ultra-fast Groq LPU SLM (e.g. openai/gpt-oss-20b)
+            from app.backends.groq_client import GroqClient
+            groq = GroqClient()
+            async for chunk in groq.dispatch_stream("openai/gpt-oss-20b", prompt, system_prompt=system_prompt):
+                yield chunk
 
     async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "") -> str:
         tokens = []
