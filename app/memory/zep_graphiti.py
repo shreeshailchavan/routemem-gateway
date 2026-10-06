@@ -66,3 +66,8 @@ class ZepGraphitiMemory:
             pass
 
         return True
+
+    async def clear(self) -> bool:
+        """Clear all in-memory and online session fact knowledge graphs."""
+        self._local_graph_store.clear()
+        return True

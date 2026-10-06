@@ -107,5 +107,22 @@ class SemanticCache:
             logger.error(f"Qdrant indexing error: {e}")
             return False
 
+    async def clear(self) -> bool:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                await client.delete(f"{self.qdrant_url}/collections/{self.collection_name}")
+                payload = {
+                    "vectors": {
+                        "size": self.vector_dim,
+                        "distance": "Cosine"
+                    }
+                }
+                await client.put(f"{self.qdrant_url}/collections/{self.collection_name}", json=payload)
+                self._collection_ensured = True
+                return True
+        except Exception as e:
+            logger.error(f"Qdrant clear error: {e}")
+            return False
+
     async def close(self):
         pass

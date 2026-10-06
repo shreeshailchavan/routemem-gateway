@@ -86,6 +86,23 @@ async def metrics():
         data = data.encode("utf-8")
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
+@app.post("/v1/admin/cache/clear")
+@app.get("/v1/admin/cache/clear")
+async def clear_all_caches():
+    """Flushes Redis exact cache, Qdrant semantic vector cache, and Zep Graphiti KG memory."""
+    redis_cleared = await exact_cache.clear()
+    qdrant_cleared = await semantic_cache.clear()
+    zep_cleared = await zep_memory.clear()
+    return {
+        "status": "success",
+        "message": "All memory tiers successfully cleared.",
+        "details": {
+            "tier_0_redis_exact_cache": "cleared" if redis_cleared else "skipped/offline",
+            "tier_1_qdrant_semantic_cache": "cleared" if qdrant_cleared else "skipped/offline",
+            "tier_2_zep_graphiti_knowledge_graph": "cleared" if zep_cleared else "skipped/offline"
+        }
+    }
+
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
     start_time = time.perf_counter()

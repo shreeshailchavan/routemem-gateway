@@ -56,6 +56,18 @@ class ExactCache:
         except Exception:
             return False
 
+    async def clear(self) -> bool:
+        if redis is None:
+            return False
+        try:
+            client = await self.get_client()
+            if client:
+                await client.flushdb()
+                return True
+        except Exception:
+            pass
+        return False
+
     async def close(self):
         if self._client and redis is not None:
             await self._client.aclose()
