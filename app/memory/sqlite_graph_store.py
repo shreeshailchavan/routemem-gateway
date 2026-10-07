@@ -2,7 +2,7 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 from app.utils.logger import get_logger
 
 logger = get_logger("sqlite_graph_store")
@@ -13,8 +13,8 @@ DEFAULT_DB_PATH = DB_DIR / "graphiti_memory.db"
 class SQLiteGraphStore:
     """Thread-safe, high-concurrency SQLite store for Zep Graphiti session facts with WAL mode."""
 
-    def __init__(self, db_path: Optional[Path] = None):
-        self.db_path = db_path or DEFAULT_DB_PATH
+    def __init__(self, db_path: Optional[Any] = None):
+        self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
         os.makedirs(self.db_path.parent, exist_ok=True)
         self._init_db()
 
