@@ -104,8 +104,13 @@ def measure_streaming_latency(endpoint: str, workload: Dict[str, Any], runs: int
     cache_statuses = []
 
     for run_idx in range(runs):
+        if workload.get("is_cache"):
+            test_prompt = prompt
+        else:
+            test_prompt = f"{prompt} [Eval ID {run_idx+1}_{int(time.time()*1000)%100000}]"
+
         payload = {
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": test_prompt}],
             "model": model,
             "session_id": f"latency-test-run-{run_idx}",
             "stream": True,
