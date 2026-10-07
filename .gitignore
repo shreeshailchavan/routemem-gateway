@@ -13,6 +13,9 @@ ENV/
 # Logs & Temporary Files
 uvicorn.log
 *.log
+*.db
+*.db-wal
+*.db-shm
 scratch/
 .system_generated/
 
