@@ -148,12 +148,13 @@ async def chat_completions(request: ChatCompletionRequest):
     # Stage 1: Ingestion & Extraction
     session_id = request.session_id or "default-session"
     system_prompt = next((m.content for m in request.messages if m.role == "system"), "")
+    orig_system_prompt = system_prompt
     user_prompt, context_prefix, composite_prompt = extract_conversation_context(request.messages)
     if not user_prompt:
         raise HTTPException(status_code=400, detail="No user message provided in request.")
 
     # Stage 2: Tier-0 Exact Hash Cache Check (2ms)
-    exact_hit = await exact_cache.get(system_prompt, user_prompt, context_prefix=context_prefix)
+    exact_hit = await exact_cache.get(orig_system_prompt, user_prompt, context_prefix=context_prefix)
     if exact_hit:
         ttft_ms = (time.perf_counter() - start_time) * 1000
         CACHE_HITS.labels(cache_type="exact").inc()
@@ -176,6 +177,8 @@ async def chat_completions(request: ChatCompletionRequest):
         ttft_ms = (time.perf_counter() - start_time) * 1000
         CACHE_HITS.labels(cache_type="semantic").inc()
         TTFT_HISTOGRAM.observe(ttft_ms / 1000.0)
+        # Tier-0 Exact Promotion: Warm Redis exact cache for sub-1ms future hits
+        asyncio.create_task(exact_cache.set(orig_system_prompt, user_prompt, semantic_hit.response, context_prefix=context_prefix))
         return ChatCompletionResponse.from_cache(
             content=semantic_hit.response,
             cache_status="SEMANTIC_HIT",
@@ -278,7 +281,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
             # Stage 8: Async Background Sync
             final_text = "".join(full_response)
-            asyncio.create_task(sync_background_state(system_prompt, user_prompt, final_text, session_id=session_id, context_prefix=context_prefix))
+            asyncio.create_task(sync_background_state(orig_system_prompt, user_prompt, final_text, session_id=session_id, context_prefix=context_prefix))
 
         return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
@@ -288,7 +291,7 @@ async def chat_completions(request: ChatCompletionRequest):
     TTFT_HISTOGRAM.observe(ttft_ms / 1000.0)
 
     # Stage 8: Async Background Sync (0ms blocking)
-    asyncio.create_task(sync_background_state(system_prompt, user_prompt, full_response, session_id=session_id, context_prefix=context_prefix))
+    asyncio.create_task(sync_background_state(orig_system_prompt, user_prompt, full_response, session_id=session_id, context_prefix=context_prefix))
 
     return ChatCompletionResponse(
         model=actual_model_name,
