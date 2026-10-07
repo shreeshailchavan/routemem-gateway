@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-10-08T03:33:20Z",
+  "endpoint": "http://54.221.136.83:8000",
+  "results": [
+    {
+      "tier": "Tier-0 Exact Cache (Warm Redis)",
+      "runs": 3,
+      "cache_status": "UNKNOWN",
+      "avg_ttft_ms": 814.87,
+      "min_ttft_ms": 692.34,
+      "max_ttft_ms": 933.56,
+      "avg_total_ms": 814.87,
+      "avg_tokens": 0.0,
+      "tokens_per_sec": 0.0
+    },
+    {
+      "tier": "Tier-1 Semantic Cache (Qdrant HNSW)",
+      "runs": 3,
+      "cache_status": "UNKNOWN",
+      "avg_ttft_ms": 895.36,
+      "min_ttft_ms": 745.78,
+      "max_ttft_ms": 1149.93,
+      "avg_total_ms": 895.36,
+      "avg_tokens": 0.0,
+      "tokens_per_sec": 0.0
+    },
+    {
+      "tier": "Tier-3 Local Fine-Tuned Specialist (routemem-specialist)",
+      "runs": 3,
+      "cache_status": "UNKNOWN",
+      "avg_ttft_ms": 852.79,
+      "min_ttft_ms": 717.93,
+      "max_ttft_ms": 1023.63,
+      "avg_total_ms": 852.79,
+      "avg_tokens": 0.0,
+      "tokens_per_sec": 0.0
+    },
+    {
+      "tier": "Tier-3 Local Code SLM (qwen2.5-coder:3b)",
+      "runs": 3,
+      "cache_status": "UNKNOWN",
+      "avg_ttft_ms": 852.97,
+      "min_ttft_ms": 641.49,
+      "max_ttft_ms": 1061.68,
+      "avg_total_ms": 852.97,
+      "avg_tokens": 0.0,
+      "tokens_per_sec": 0.0
+    },
+    {
+      "tier": "Tier-3 Local Reasoning SLM (deepseek-r1:1.5b)",
+      "runs": 3,
+      "cache_status": "UNKNOWN",
+      "avg_ttft_ms": 711.42,
+      "min_ttft_ms": 667.94,
+      "max_ttft_ms": 749.42,
+      "avg_total_ms": 711.42,
+      "avg_tokens": 0.0,
+      "tokens_per_sec": 0.0
+    },
+    {
+      "tier": "Tier-A Cloud Frontier (Groq LPU / GPT-OSS-120B)",
+      "runs": 3,
+      "cache_status": "UNKNOWN",
+      "avg_ttft_ms": 709.17,
+      "min_ttft_ms": 623.02,
+      "max_ttft_ms": 827.77,
+      "avg_total_ms": 709.17,
+      "avg_tokens": 0.0,
+      "tokens_per_sec": 0.0
+    }
+  ]
+}
