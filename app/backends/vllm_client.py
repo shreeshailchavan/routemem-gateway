@@ -14,7 +14,19 @@ class VLLMClient(BaseLLMBackend):
         self.endpoint_url = endpoint_url or getattr(settings, "local_slm_url", "http://localhost:11434/v1")
 
     async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
-        target_model = "llama3.2:3b"
+        # Dynamic model resolver for installed local SLM catalog
+        m_lower = model.lower() if model else ""
+        if "qwen" in m_lower or "code" in m_lower:
+            target_model = "qwen2.5-coder:3b"
+        elif "deepseek" in m_lower or "reason" in m_lower or "r1" in m_lower:
+            target_model = "deepseek-r1:1.5b"
+        elif "phi" in m_lower:
+            target_model = "phi3.5:latest"
+        elif "8b" in m_lower or "llama-3.1" in m_lower:
+            target_model = "llama3.1:8b"
+        else:
+            target_model = "llama3.2:3b"
+
         ollama_url = "http://localhost:11434/v1/chat/completions"
         
         messages = []
