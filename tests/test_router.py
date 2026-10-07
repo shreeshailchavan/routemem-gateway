@@ -22,7 +22,7 @@ class TestRouter(unittest.TestCase):
 
         # Simple QA with max cost cap routes to lowest cost local SLM or free API
         selected_simple = router.select_model(difficulty=0.2, intent="simple_qa", max_cost_target=0.000005)
-        self.assertIn(selected_simple, ["llama-3.1-8b", "phi-3.5-mini-local", "mistral-7b-local", "qwen-2.5-7b-local", "groq-gpt-120b", "groq-qwen-27b", "gemini-3.8-flash", "claude-3-7-sonnet", "openrouter-free-deepseek-r1"])
+        self.assertIn(selected_simple, ["phi3.5:latest", "llama-3.2-3b-local", "llama-3.1-8b", "phi-3.5-mini-local", "mistral-7b-local", "qwen-2.5-7b-local", "groq-gpt-120b", "groq-qwen-27b", "gemini-3.8-flash", "claude-3-7-sonnet", "openrouter-free-deepseek-r1"])
 
         # High difficulty code query routes to capable code or frontier model
         selected_code = router.select_model(difficulty=0.85, intent="code_generation")

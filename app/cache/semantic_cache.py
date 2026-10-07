@@ -1,6 +1,6 @@
 import uuid
 import httpx
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from pydantic import BaseModel
 
 from app.config import settings
@@ -44,16 +44,19 @@ class SemanticCache:
     def _embed_text(self, text: str) -> List[float]:
         return self.embedder.embed(text)
 
-    async def search(
+    async def search_with_vector(
         self,
         user_prompt: str,
         threshold: Optional[float] = None,
         context_prefix: str = "",
         session_id: Optional[str] = None
-    ) -> Optional[SemanticHit]:
+    ) -> Tuple[Optional[SemanticHit], Optional[List[float]]]:
+        """
+        Searches Qdrant semantic vector cache and returns (SemanticHit, query_embedding_vector).
+        Reusing query_embedding_vector in Stage 5 prevents redundant embedding generation.
+        """
         if not settings.semantic_cache_enabled:
-            return None
-        # Use stricter threshold (0.93) for multi-turn queries to prevent cross-topic false positive hits
+            return None, None
         default_thresh = 0.93 if (context_prefix and context_prefix.strip()) else settings.semantic_cache_threshold
         target_threshold = threshold or default_thresh
         try:
@@ -82,17 +85,33 @@ class SemanticCache:
                         has_query_context = bool(context_prefix and context_prefix.strip())
                         has_hit_context = bool(payload.get("has_context", False))
                         if has_query_context != has_hit_context:
-                            return None
+                            return None, vector
 
                         return SemanticHit(
                             response=payload.get("response", ""),
                             similarity_score=hit.get("score", 0.0),
                             prompt_id=str(hit.get("id", ""))
-                        )
-            return None
+                        ), vector
+            return None, vector
         except Exception as e:
             logger.error(f"Qdrant search error: {e}")
-            return None
+            return None, None
+
+    async def search(
+        self,
+        user_prompt: str,
+        threshold: Optional[float] = None,
+        context_prefix: str = "",
+        session_id: Optional[str] = None
+    ) -> Optional[SemanticHit]:
+        """Backward-compatible search wrapper."""
+        hit, _ = await self.search_with_vector(
+            user_prompt=user_prompt,
+            threshold=threshold,
+            context_prefix=context_prefix,
+            session_id=session_id
+        )
+        return hit
 
     async def index(
         self,

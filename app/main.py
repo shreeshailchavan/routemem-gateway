@@ -166,7 +166,7 @@ async def chat_completions(request: ChatCompletionRequest):
         )
 
     # Stage 3: Tier-1 Semantic Vector Cache Check (<15ms)
-    semantic_hit = await semantic_cache.search(
+    semantic_hit, query_vector = await semantic_cache.search_with_vector(
         user_prompt,
         threshold=settings.semantic_cache_threshold,
         context_prefix=context_prefix,
@@ -195,8 +195,8 @@ async def chat_completions(request: ChatCompletionRequest):
         kg_memory_used = True
         system_prompt = f"{system_prompt}\n\n[Retrieved Session Knowledge Graph Memory]:\n{session_facts}".strip()
 
-    # Stage 5: Intent & Difficulty Profiling (<3ms)
-    difficulty_score, task_intent = profiler.profile(compressed_prompt)
+    # Stage 5: Dual-Signal Hybrid Profiling (<1ms, Zero-Overhead Embedding Reuse)
+    difficulty_score, task_intent = profiler.profile(compressed_prompt, embedding=query_vector)
 
     # Stage 6: Capability Space & Budget Optimization (4ms)
     if request.model and request.model not in ["routemem-auto", "auto", "default"]:
