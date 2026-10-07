@@ -173,7 +173,8 @@ async def chat_completions(request: ChatCompletionRequest):
     actual_answering_model = selected_model
     cache_status = "EXACT_MISS_ROUTED"
 
-    if "local" in selected_model or "llama" in selected_model or "phi" in selected_model or "mistral" in selected_model:
+    local_keywords = ["local", "llama", "phi", "mistral", "qwen2.5-coder", "deepseek-r1:1.5b", "ollama"]
+    if any(k in selected_model.lower() for k in local_keywords):
         backend_client = vllm_client
         cache_status = "LOCAL_SLM_HIT"
         actual_answering_model = selected_model
