@@ -1,7 +1,7 @@
 import time
 import json
 import asyncio
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Tuple, List, Any
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, Response, JSONResponse
 
@@ -66,11 +66,48 @@ groq_client = GroqClient()
 deepseek_client = DeepSeekClient()
 gemini_client = GeminiClient()
 
-async def sync_background_state(system_prompt: str, user_prompt: str, response_text: str, session_id: str = "default-session"):
+def extract_conversation_context(messages: List[Any]) -> Tuple[str, str, str]:
+    """
+    Extracts (user_prompt, context_prefix, composite_prompt) from the message history.
+    """
+    user_messages = [getattr(m, "content", "") for m in messages if getattr(m, "role", "") == "user"]
+    if not user_messages:
+        return "", "", ""
+    user_prompt = user_messages[-1]
+
+    prior_turns = []
+    turns_found = 0
+    for m in reversed(messages[:-1]):
+        role = getattr(m, "role", "")
+        content = getattr(m, "content", "")
+        if role in ("assistant", "user") and content:
+            role_label = "Assistant" if role == "assistant" else "User"
+            content_snippet = content[:200].strip()
+            prior_turns.insert(0, f"[{role_label}: {content_snippet}]")
+            turns_found += 1
+            if turns_found >= 2:
+                break
+
+    if prior_turns:
+        context_prefix = " ".join(prior_turns)
+        composite_prompt = f"{context_prefix}\n{user_prompt}"
+    else:
+        context_prefix = ""
+        composite_prompt = user_prompt
+
+    return user_prompt, context_prefix, composite_prompt
+
+async def sync_background_state(
+    system_prompt: str,
+    user_prompt: str,
+    response_text: str,
+    session_id: str = "default-session",
+    context_prefix: str = ""
+):
     """Stage 8: Non-blocking background state sync across Redis, Qdrant & Zep Graphiti."""
     try:
-        await exact_cache.set(system_prompt, user_prompt, response_text)
-        await semantic_cache.index(user_prompt, response_text)
+        await exact_cache.set(system_prompt, user_prompt, response_text, context_prefix=context_prefix)
+        await semantic_cache.index(user_prompt, response_text, context_prefix=context_prefix, session_id=session_id)
         await zep_memory.add_session_interaction(session_id, user_prompt, response_text)
     except Exception as e:
         logger.error(f"Background state sync error: {e}")
@@ -111,13 +148,12 @@ async def chat_completions(request: ChatCompletionRequest):
     # Stage 1: Ingestion & Extraction
     session_id = request.session_id or "default-session"
     system_prompt = next((m.content for m in request.messages if m.role == "system"), "")
-    user_messages = [m.content for m in request.messages if m.role == "user"]
-    if not user_messages:
+    user_prompt, context_prefix, composite_prompt = extract_conversation_context(request.messages)
+    if not user_prompt:
         raise HTTPException(status_code=400, detail="No user message provided in request.")
-    user_prompt = user_messages[-1]
 
     # Stage 2: Tier-0 Exact Hash Cache Check (2ms)
-    exact_hit = await exact_cache.get(system_prompt, user_prompt)
+    exact_hit = await exact_cache.get(system_prompt, user_prompt, context_prefix=context_prefix)
     if exact_hit:
         ttft_ms = (time.perf_counter() - start_time) * 1000
         CACHE_HITS.labels(cache_type="exact").inc()
@@ -130,7 +166,12 @@ async def chat_completions(request: ChatCompletionRequest):
         )
 
     # Stage 3: Tier-1 Semantic Vector Cache Check (<15ms)
-    semantic_hit = await semantic_cache.search(user_prompt, threshold=settings.semantic_cache_threshold)
+    semantic_hit = await semantic_cache.search(
+        user_prompt,
+        threshold=settings.semantic_cache_threshold,
+        context_prefix=context_prefix,
+        session_id=session_id
+    )
     if semantic_hit:
         ttft_ms = (time.perf_counter() - start_time) * 1000
         CACHE_HITS.labels(cache_type="semantic").inc()
@@ -237,7 +278,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
             # Stage 8: Async Background Sync
             final_text = "".join(full_response)
-            asyncio.create_task(sync_background_state(system_prompt, user_prompt, final_text, session_id=session_id))
+            asyncio.create_task(sync_background_state(system_prompt, user_prompt, final_text, session_id=session_id, context_prefix=context_prefix))
 
         return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
@@ -247,7 +288,7 @@ async def chat_completions(request: ChatCompletionRequest):
     TTFT_HISTOGRAM.observe(ttft_ms / 1000.0)
 
     # Stage 8: Async Background Sync (0ms blocking)
-    asyncio.create_task(sync_background_state(system_prompt, user_prompt, full_response, session_id=session_id))
+    asyncio.create_task(sync_background_state(system_prompt, user_prompt, full_response, session_id=session_id, context_prefix=context_prefix))
 
     return ChatCompletionResponse(
         model=actual_model_name,

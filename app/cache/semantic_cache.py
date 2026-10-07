@@ -44,12 +44,21 @@ class SemanticCache:
     def _embed_text(self, text: str) -> List[float]:
         return self.embedder.embed(text)
 
-    async def search(self, user_prompt: str, threshold: Optional[float] = None) -> Optional[SemanticHit]:
+    async def search(
+        self,
+        user_prompt: str,
+        threshold: Optional[float] = None,
+        context_prefix: str = "",
+        session_id: Optional[str] = None
+    ) -> Optional[SemanticHit]:
         if not settings.semantic_cache_enabled:
             return None
-        target_threshold = threshold or settings.semantic_cache_threshold
+        # Use stricter threshold (0.93) for multi-turn queries to prevent cross-topic false positive hits
+        default_thresh = 0.93 if (context_prefix and context_prefix.strip()) else settings.semantic_cache_threshold
+        target_threshold = threshold or default_thresh
         try:
-            vector = self._embed_text(user_prompt)
+            composite_prompt = f"{context_prefix.strip()}\n{user_prompt.strip()}" if context_prefix else user_prompt.strip()
+            vector = self._embed_text(composite_prompt)
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await self._ensure_collection(client)
                 search_payload = {
@@ -68,6 +77,13 @@ class SemanticCache:
                     if results and len(results) > 0:
                         hit = results[0]
                         payload = hit.get("payload") or {}
+
+                        # Multi-turn context guard: ensure context states match
+                        has_query_context = bool(context_prefix and context_prefix.strip())
+                        has_hit_context = bool(payload.get("has_context", False))
+                        if has_query_context != has_hit_context:
+                            return None
+
                         return SemanticHit(
                             response=payload.get("response", ""),
                             similarity_score=hit.get("score", 0.0),
@@ -78,11 +94,19 @@ class SemanticCache:
             logger.error(f"Qdrant search error: {e}")
             return None
 
-    async def index(self, user_prompt: str, response: str) -> bool:
+    async def index(
+        self,
+        user_prompt: str,
+        response: str,
+        context_prefix: str = "",
+        session_id: Optional[str] = None
+    ) -> bool:
         if not settings.semantic_cache_enabled:
             return False
         try:
-            vector = self._embed_text(user_prompt)
+            has_context = bool(context_prefix and context_prefix.strip())
+            composite_prompt = f"{context_prefix.strip()}\n{user_prompt.strip()}" if has_context else user_prompt.strip()
+            vector = self._embed_text(composite_prompt)
             point_id = str(uuid.uuid4())
             async with httpx.AsyncClient(timeout=5.0) as client:
                 await self._ensure_collection(client)
@@ -93,6 +117,10 @@ class SemanticCache:
                             "vector": vector,
                             "payload": {
                                 "user_prompt": user_prompt,
+                                "context_prefix": context_prefix,
+                                "composite_prompt": composite_prompt,
+                                "has_context": has_context,
+                                "session_id": session_id or "",
                                 "response": response
                             }
                         }
