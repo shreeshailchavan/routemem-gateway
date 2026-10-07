@@ -14,7 +14,7 @@ class VLLMClient(BaseLLMBackend):
         self.endpoint_url = endpoint_url or getattr(settings, "local_slm_url", "http://localhost:11434/v1")
 
     async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
-        target_model = "llama3.2:1b"
+        target_model = "llama3.2:3b"
         ollama_url = "http://localhost:11434/v1/chat/completions"
         
         messages = []

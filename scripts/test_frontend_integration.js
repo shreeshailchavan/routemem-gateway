@@ -2,7 +2,7 @@ const http = require('http');
 
 async function testBackendHealth() {
   return new Promise((resolve, reject) => {
-    http.get('http://18.214.99.62:8000/health', (res) => {
+    http.get('http://54.221.136.83:8000/health', (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(data) }));
@@ -18,7 +18,7 @@ async function testBackendCompletion(modelName, promptText) {
       temperature: 0.7
     });
 
-    const req = http.request('http://18.214.99.62:8000/v1/chat/completions', {
+    const req = http.request('http://54.221.136.83:8000/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

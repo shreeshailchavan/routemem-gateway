@@ -14,7 +14,7 @@ import urllib.request
 import urllib.error
 
 # Gateway Configuration
-GATEWAY_URL = os.getenv("ROUTEMEM_URL", "http://18.214.99.62:8000")
+GATEWAY_URL = os.getenv("ROUTEMEM_URL", "http://54.221.136.83:8000")
 
 # ANSI Color & Formatting Constants
 BOLD = "\033[1m"
