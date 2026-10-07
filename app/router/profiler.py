@@ -46,25 +46,32 @@ class QueryProfiler:
         # 1. Surface Syntactic AST Analysis (< 0.3 ms)
         code_keywords = ["def ", "class ", "function", "import ", "select ", "return", "var ", "const ", "struct "]
         math_symbols = ["\\int", "\\sum", "sqrt", "^", "==", "!=", "<=", ">=", "matrix", "lambda"]
+        expert_keywords = ["analyze ", "doctrine", "antitrust", "pharmacokinetic", "hipaa", "soc2", "quantum", "basel ", "cryptographic", "asymptotic", "cleavage", "macroeconomic", "contagion", "regulations", "audit ", "sovereign", "bioenergetic", "qubit"]
+        reason_keywords = ["step by step", "how many", "think step", "puzzle", "riddle", "probability", "deduce", "prove ", "if it takes", "harmonic mean", "birthday", "switches"]
 
         prompt_lower = prompt.lower()
         code_count = sum(1 for kw in code_keywords if kw in prompt_lower)
         math_count = sum(1 for sym in math_symbols if sym in prompt_lower)
+        expert_count = sum(1 for kw in expert_keywords if kw in prompt_lower)
+        reason_count = sum(1 for kw in reason_keywords if kw in prompt_lower)
 
         length_factor = min(0.30, len(prompt.split()) / 500.0)
         syntax_factor = min(0.35, (code_count * 0.08) + (math_count * 0.10))
 
-        if code_count >= 2 or "write a" in prompt_lower or "code" in prompt_lower or "bug" in prompt_lower:
-            base_syntax_diff = 0.65
+        if expert_count >= 1 or "comparative analysis" in prompt_lower:
+            base_syntax_diff = 0.80
+            syntax_intent = "domain_expert"
+        elif code_count >= 2 or "write a" in prompt_lower or "code" in prompt_lower or "bug" in prompt_lower or "implement " in prompt_lower or "fix this" in prompt_lower:
+            base_syntax_diff = 0.55
             syntax_intent = "code_generation"
-        elif math_count >= 2 or "solve" in prompt_lower or "calculate" in prompt_lower:
-            base_syntax_diff = 0.70
+        elif math_count >= 2 or reason_count >= 1 or "solve" in prompt_lower or "calculate" in prompt_lower:
+            base_syntax_diff = 0.60
             syntax_intent = "complex_reasoning"
         elif len(prompt.split()) > 150:
             base_syntax_diff = 0.55
             syntax_intent = "complex_reasoning"
         else:
-            base_syntax_diff = 0.25
+            base_syntax_diff = 0.28
             syntax_intent = "simple_qa"
 
         d_syntax = min(1.0, base_syntax_diff + length_factor + syntax_factor)
@@ -90,7 +97,7 @@ class QueryProfiler:
                 s_faq    = sim_dict.get("simple_qa", 0.0)
 
                 # Map semantic proximity to difficulty
-                d_semantic = 0.50 + (s_reason * 0.45) + (s_expert * 0.40) + (s_code * 0.30) - (s_faq * 0.45)
+                d_semantic = 0.30 + (s_expert * 0.55) + (s_reason * 0.35) + (s_code * 0.15) - (s_faq * 0.45)
                 d_semantic = float(np.clip(d_semantic, 0.10, 0.95))
 
                 # Riddle & Counter-intuitive deduction boost (fixes "Sally's brothers" trap)
