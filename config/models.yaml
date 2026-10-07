@@ -116,6 +116,14 @@ models:
     avg_latency_ms: 150
 
   # --- Open-Weight Local Engines (Ollama / vLLM) ---
+  routemem-specialist:
+    display_name: "RouteMem Llama 3.2 3B Specialist (Fine-Tuned Unsloth)"
+    provider: "local_vllm"
+    cost_per_token: 0.0
+    base_accuracy: 0.94
+    capability_vector: [0.94, 0.90, 0.91, 0.98]
+    avg_latency_ms: 30
+
   llama-3.2-3b-local:
     display_name: "Meta Llama 3.2 3B Instruct (Native Ollama ARM)"
     provider: "local_vllm"

@@ -16,7 +16,9 @@ class VLLMClient(BaseLLMBackend):
     async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
         # Dynamic model resolver for installed local SLM catalog
         m_lower = model.lower() if model else ""
-        if "qwen" in m_lower or "code" in m_lower:
+        if "specialist" in m_lower or "routemem" in m_lower:
+            target_model = "routemem-specialist"
+        elif "qwen" in m_lower or "code" in m_lower:
             target_model = "qwen2.5-coder:3b"
         elif "deepseek" in m_lower or "reason" in m_lower or "r1" in m_lower:
             target_model = "deepseek-r1:1.5b"

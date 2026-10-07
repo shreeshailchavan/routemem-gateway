@@ -114,7 +114,7 @@ class OmniRouter:
             elif difficulty <= 0.25:
                 return "phi3.5:latest"
             else:
-                return "llama-3.2-3b-local"
+                return "routemem-specialist"
 
         # 3. Escalation: Solve Lagrangian Dual Optimization for Cloud Frontier Fleet
         target_quality = quality_target or self.alpha_target
