@@ -250,7 +250,7 @@ async def chat_completions(request: ChatCompletionRequest):
         async def stream_generator():
             full_response = []
             first_token_time = None
-            async for token in backend_client.dispatch_stream(actual_model_name, compressed_prompt, system_prompt=system_prompt):
+            async for token in backend_client.dispatch_stream(actual_model_name, compressed_prompt, system_prompt=system_prompt, max_tokens=request.max_tokens):
                 if first_token_time is None:
                     first_token_time = (time.perf_counter() - start_time) * 1000
                     TTFT_HISTOGRAM.observe(first_token_time / 1000.0)
@@ -286,7 +286,7 @@ async def chat_completions(request: ChatCompletionRequest):
         return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
     # Non-streaming response path
-    full_response = await backend_client.dispatch_completion(actual_model_name, compressed_prompt, system_prompt=system_prompt)
+    full_response = await backend_client.dispatch_completion(actual_model_name, compressed_prompt, system_prompt=system_prompt, max_tokens=request.max_tokens)
     ttft_ms = (time.perf_counter() - start_time) * 1000
     TTFT_HISTOGRAM.observe(ttft_ms / 1000.0)
 

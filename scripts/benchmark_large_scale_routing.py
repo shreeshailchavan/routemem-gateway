@@ -80,7 +80,8 @@ def evaluate_query(item: Dict[str, Any], endpoint: str, profiler: QueryProfiler,
         "messages": [{"role": "user", "content": prompt}],
         "model": "routemem-auto",
         "session_id": f"benchmark-{item['id']}",
-        "stream": False
+        "stream": False,
+        "max_tokens": 40
     }
 
     req = urllib.request.Request(

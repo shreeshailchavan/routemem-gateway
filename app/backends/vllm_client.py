@@ -13,7 +13,7 @@ class VLLMClient(BaseLLMBackend):
     def __init__(self, endpoint_url: Optional[str] = None):
         self.endpoint_url = endpoint_url or getattr(settings, "local_slm_url", "http://localhost:11434/v1")
 
-    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
+    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = 80) -> AsyncGenerator[str, None]:
         # Dynamic model resolver for installed local SLM catalog
         m_lower = model.lower() if model else ""
         if "specialist" in m_lower or "routemem" in m_lower:
@@ -40,7 +40,8 @@ class VLLMClient(BaseLLMBackend):
             "model": target_model,
             "messages": messages,
             "stream": True,
-            "temperature": 0.7
+            "temperature": 0.7,
+            "max_tokens": max_tokens or 80
         }
 
         success = False
@@ -72,8 +73,8 @@ class VLLMClient(BaseLLMBackend):
         async for chunk in groq.dispatch_stream("openai/gpt-oss-20b", prompt, system_prompt=system_prompt):
             yield chunk
 
-    async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "") -> str:
+    async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = 80) -> str:
         tokens = []
-        async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt):
+        async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt, max_tokens=max_tokens):
             tokens.append(chunk)
         return "".join(tokens)
