@@ -105,7 +105,10 @@ class OmniRouter:
         )
 
         # 2. Fast-Path Local SLM Resolution if Neural Head predicts local model satisfies query
-        if slm_win_prob >= 0.50:
+        # Domain expert queries or high-difficulty queries escalate directly to Cloud Frontier
+        if "expert" in intent.lower() or difficulty >= 0.75:
+            pass  # Escalate to Step 3: Lagrangian Dual Cloud Frontier Fleet
+        elif slm_win_prob >= 0.44:
             i_lower = intent.lower()
             if "code" in i_lower:
                 return "qwen2.5-coder:3b"
