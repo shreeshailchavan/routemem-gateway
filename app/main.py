@@ -273,7 +273,9 @@ async def chat_completions(request: ChatCompletionRequest):
                     "routed_model": actual_model_name,
                     "kg_facts_retrieved": kg_facts_retrieved_count,
                     "kg_memory_used": kg_memory_used,
-                    "is_fallback": target_routed_model != actual_model_name
+                    "is_fallback": target_routed_model != actual_model_name,
+                    "difficulty": round(difficulty_score, 3),
+                    "intent": task_intent
                 }
             })
             yield f"data: {meta_chunk}\n\n"
@@ -319,6 +321,8 @@ async def chat_completions(request: ChatCompletionRequest):
             routed_model=actual_model_name,
             kg_facts_retrieved=kg_facts_retrieved_count,
             kg_memory_used=kg_memory_used,
-            is_fallback=target_routed_model != actual_model_name
+            is_fallback=target_routed_model != actual_model_name,
+            difficulty=round(difficulty_score, 3),
+            intent=task_intent
         )
     )

@@ -32,6 +32,8 @@ class RouteMemMetadata(BaseModel):
     kg_facts_retrieved: int = 0
     kg_memory_used: bool = False
     is_fallback: bool = False
+    difficulty: Optional[float] = None
+    intent: Optional[str] = None
 
 class UsageInfo(BaseModel):
     prompt_tokens: int = 0
