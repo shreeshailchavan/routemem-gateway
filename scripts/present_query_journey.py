@@ -436,8 +436,8 @@ def print_summary(meta: Dict[str, Any], calc: Dict[str, Any], cached_latency_ms:
     cost_usd = meta.get("cost_usd", 0.0)
     kg_facts = meta.get("kg_facts_retrieved", 0)
     compression = meta.get("token_reduction_ratio", 0.0)
-    difficulty = meta.get("difficulty", calc.get("difficulty", 0.50))
-    intent = meta.get("intent", calc.get("intent", "general"))
+    difficulty = meta.get("difficulty") if meta.get("difficulty") is not None else calc.get("difficulty", 0.25)
+    intent = meta.get("intent") or calc.get("intent", "simple_qa")
 
     savings_str = "100.0% vs GPT-4o" if cost_usd == 0 else f"{max(0.0, (0.03 - cost_usd) / 0.03 * 100):.1f}% vs GPT-4o"
 
