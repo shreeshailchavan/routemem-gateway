@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     compression_enabled: bool = Field(default=True, validation_alias="COMPRESSION_ENABLED")
     compression_ratio: float = Field(default=0.80, validation_alias="COMPRESSION_RATIO")
     monthly_budget_limit_usd: float = Field(default=500.0, validation_alias="MONTHLY_BUDGET_LIMIT_USD")
+    local_slm_default_max_tokens: int = Field(default=1024, validation_alias="LOCAL_SLM_DEFAULT_MAX_TOKENS")
+    local_slm_max_tokens_ceiling: int = Field(default=4096, validation_alias="LOCAL_SLM_MAX_TOKENS_CEILING")
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),

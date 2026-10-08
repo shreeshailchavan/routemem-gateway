@@ -10,10 +10,25 @@ logger = get_logger("vllm_client")
 class VLLMClient(BaseLLMBackend):
     """Local SLM Client executing Ollama llama3.2:1b / vLLM workers locally."""
 
+    DEFAULT_MAX_TOKENS = 1024
+    MAX_SAFETY_CEILING = 4096
+
     def __init__(self, endpoint_url: Optional[str] = None):
         self.endpoint_url = endpoint_url or getattr(settings, "local_slm_url", "http://localhost:11434/v1")
 
-    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = 80) -> AsyncGenerator[str, None]:
+    def _resolve_max_tokens(self, max_tokens: Optional[int]) -> int:
+        """Resolves output token cap dynamically.
+        
+        1. If explicitly requested by caller, clamp to MAX_SAFETY_CEILING (4096).
+        2. Otherwise, fall back to configured default (1024).
+        """
+        default_cap = getattr(settings, "local_slm_default_max_tokens", self.DEFAULT_MAX_TOKENS)
+        ceiling = getattr(settings, "local_slm_max_tokens_ceiling", self.MAX_SAFETY_CEILING)
+        if max_tokens is not None and max_tokens > 0:
+            return min(max_tokens, ceiling)
+        return default_cap
+
+    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None) -> AsyncGenerator[str, None]:
         # Dynamic model resolver for installed local SLM catalog
         m_lower = model.lower() if model else ""
         if "specialist" in m_lower or "routemem" in m_lower:
@@ -36,17 +51,19 @@ class VLLMClient(BaseLLMBackend):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        resolved_tokens = self._resolve_max_tokens(max_tokens)
+
         payload = {
             "model": target_model,
             "messages": messages,
             "stream": True,
             "temperature": 0.7,
-            "max_tokens": max_tokens or 80
+            "max_tokens": resolved_tokens
         }
 
         success = False
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream("POST", ollama_url, json=payload) as response:
                     if response.status_code == 200:
                         async for line in response.aiter_lines():
@@ -70,10 +87,10 @@ class VLLMClient(BaseLLMBackend):
         # Fallback to Groq LPU SLM if local worker offline
         from app.backends.groq_client import GroqClient
         groq = GroqClient()
-        async for chunk in groq.dispatch_stream("openai/gpt-oss-20b", prompt, system_prompt=system_prompt):
+        async for chunk in groq.dispatch_stream("openai/gpt-oss-20b", prompt, system_prompt=system_prompt, max_tokens=max_tokens):
             yield chunk
 
-    async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = 80) -> str:
+    async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None) -> str:
         tokens = []
         async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt, max_tokens=max_tokens):
             tokens.append(chunk)

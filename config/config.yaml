@@ -36,6 +36,8 @@ backends:
   local_slm:
     name: "llama-3.1-8b"
     endpoint: "http://localhost:8001/v1"
+    default_max_tokens: 1024
+    max_tokens_ceiling: 4096
   code_model:
     name: "qwen-2.5-coder-32b"
     endpoint: "http://localhost:8001/v1"

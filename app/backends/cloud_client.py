@@ -11,19 +11,19 @@ class CloudAPIClient(BaseLLMBackend):
         self.openai_key = openai_api_key or settings.openai_api_key
         self.anthropic_key = anthropic_api_key or settings.anthropic_api_key
 
-    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "", **kwargs) -> AsyncGenerator[str, None]:
+    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
         if "claude" in model.lower() or "anthropic" in model.lower():
-            async for chunk in self._stream_anthropic(model, prompt, system_prompt):
+            async for chunk in self._stream_anthropic(model, prompt, system_prompt, max_tokens=max_tokens):
                 yield chunk
         else:
-            async for chunk in self._stream_openai(model, prompt, system_prompt):
+            async for chunk in self._stream_openai(model, prompt, system_prompt, max_tokens=max_tokens):
                 yield chunk
 
-    async def _stream_openai(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
+    async def _stream_openai(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None) -> AsyncGenerator[str, None]:
         if not self.openai_key:
             from app.backends.groq_client import GroqClient
             groq = GroqClient()
-            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt):
+            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt, max_tokens=max_tokens):
                 yield chunk
             return
 
@@ -40,6 +40,7 @@ class CloudAPIClient(BaseLLMBackend):
         payload = {
             "model": model,
             "messages": messages,
+            "max_tokens": max_tokens or 2048,
             "stream": True
         }
         try:
@@ -63,11 +64,11 @@ class CloudAPIClient(BaseLLMBackend):
         except Exception:
             yield f"[RouteMem Cloud OpenAI ({model})]: Task completed."
 
-    async def _stream_anthropic(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
+    async def _stream_anthropic(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None) -> AsyncGenerator[str, None]:
         if not self.anthropic_key:
             from app.backends.groq_client import GroqClient
             groq = GroqClient()
-            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt):
+            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt, max_tokens=max_tokens):
                 yield chunk
             return
 
@@ -79,7 +80,7 @@ class CloudAPIClient(BaseLLMBackend):
         }
         payload = {
             "model": model,
-            "max_tokens": 1024,
+            "max_tokens": max_tokens or 2048,
             "messages": [{"role": "user", "content": prompt}],
             "stream": True
         }
