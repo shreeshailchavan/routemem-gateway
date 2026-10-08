@@ -201,6 +201,28 @@ async def chat_completions(request: ChatCompletionRequest):
     # Stage 5: Dual-Signal Hybrid Profiling (<1ms, Zero-Overhead Embedding Reuse)
     difficulty_score, task_intent = profiler.profile(compressed_prompt, embedding=query_vector)
 
+    # Dynamic intent-aware system prompt & token cap resolution
+    if not orig_system_prompt:
+        intent_system_prompts = {
+            "simple_qa": "You are a concise, direct AI assistant. Answer factual and simple questions directly and briefly without unnecessary preamble or repetitive filler.",
+            "code_generation": "You are an expert software engineer. Provide clean, correct, well-structured code with minimal conversational fluff.",
+            "complex_reasoning": "You are a logical reasoning specialist. Think methodically, show concise step-by-step deduction, and provide the exact final answer.",
+            "domain_expert": "You are an authoritative domain specialist. Provide rigorous, precise, and well-structured technical analysis."
+        }
+        default_intent_sys = intent_system_prompts.get(task_intent, "You are a helpful and concise AI assistant.")
+        if system_prompt:
+            system_prompt = f"{default_intent_sys}\n\n{system_prompt}".strip()
+        else:
+            system_prompt = default_intent_sys
+
+    intent_token_caps = {
+        "simple_qa": 150,
+        "code_generation": 800,
+        "complex_reasoning": 600,
+        "domain_expert": 1024
+    }
+    resolved_max_tokens = request.max_tokens if (request.max_tokens is not None and request.max_tokens > 0) else intent_token_caps.get(task_intent, 450)
+
     # Stage 6: Capability Space & Budget Optimization (4ms)
     if request.model and request.model not in ["routemem-auto", "auto", "default"]:
         selected_model = request.model
@@ -250,7 +272,7 @@ async def chat_completions(request: ChatCompletionRequest):
         async def stream_generator():
             full_response = []
             first_token_time = None
-            async for token in backend_client.dispatch_stream(actual_model_name, compressed_prompt, system_prompt=system_prompt, max_tokens=request.max_tokens):
+            async for token in backend_client.dispatch_stream(actual_model_name, compressed_prompt, system_prompt=system_prompt, max_tokens=resolved_max_tokens):
                 if first_token_time is None:
                     first_token_time = (time.perf_counter() - start_time) * 1000
                     TTFT_HISTOGRAM.observe(first_token_time / 1000.0)
@@ -288,7 +310,7 @@ async def chat_completions(request: ChatCompletionRequest):
         return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
     # Non-streaming response path
-    full_response = await backend_client.dispatch_completion(actual_model_name, compressed_prompt, system_prompt=system_prompt, max_tokens=request.max_tokens)
+    full_response = await backend_client.dispatch_completion(actual_model_name, compressed_prompt, system_prompt=system_prompt, max_tokens=resolved_max_tokens)
     ttft_ms = (time.perf_counter() - start_time) * 1000
     TTFT_HISTOGRAM.observe(ttft_ms / 1000.0)
 

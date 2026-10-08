@@ -60,7 +60,7 @@ class SmoothStreamer:
         self._in_code = False
 
     def stream_text(self, text: str, is_cached: bool = False):
-        """Streams text with natural typing cadence."""
+        """Streams text with natural typing cadence without per-char ANSI escaping."""
         if not text:
             return
         if self.mode == "instant":
@@ -68,32 +68,37 @@ class SmoothStreamer:
             sys.stdout.flush()
             return
 
-        base_delay = 0.005 if is_cached else (0.010 if self.mode == "smooth" else 0.003)
+        base_delay = 0.003 if is_cached else (0.007 if self.mode == "smooth" else 0.002)
 
-        i = 0
-        n = len(text)
-        while i < n:
-            ch = text[i]
+        sys.stdout.write(WHITE)
+        try:
+            i = 0
+            n = len(text)
+            while i < n:
+                ch = text[i]
 
-            if ch == '`' and i + 2 < n and text[i:i+3] == '```':
-                self._in_code = not self._in_code
+                if ch == '`' and i + 2 < n and text[i:i+3] == '```':
+                    self._in_code = not self._in_code
 
-            sys.stdout.write(f"{WHITE}{ch}{RESET}")
+                sys.stdout.write(ch)
+                sys.stdout.flush()
+
+                if self._in_code:
+                    time.sleep(base_delay * 0.4)
+                elif ch in ".!?":
+                    time.sleep(base_delay * 2.2)
+                elif ch == "\n":
+                    time.sleep(base_delay * 1.5)
+                elif ch in ",;:":
+                    time.sleep(base_delay * 1.2)
+                elif ch == " ":
+                    time.sleep(base_delay * 0.8)
+                else:
+                    time.sleep(base_delay)
+                i += 1
+        finally:
+            sys.stdout.write(RESET)
             sys.stdout.flush()
-
-            if self._in_code:
-                time.sleep(base_delay * 0.4)
-            elif ch in ".!?":
-                time.sleep(base_delay * 2.5)
-            elif ch == "\n":
-                time.sleep(base_delay * 1.6)
-            elif ch in ",;:":
-                time.sleep(base_delay * 1.3)
-            elif ch == " ":
-                time.sleep(base_delay * 0.9)
-            else:
-                time.sleep(base_delay)
-            i += 1
 
 
 # Global active streamer
@@ -134,18 +139,28 @@ def calculate_profiling_and_routing(prompt: str) -> Dict[str, Any]:
         difficulty, intent = profiler_instance.profile(prompt)
     else:
         prompt_lower = prompt.lower()
-        if any(k in prompt_lower for k in ["def ", "class ", "import ", "python", "code", "asyncio", "function", "lru", "threadsafe", "kafka"]):
+        import re
+        is_simple_math = bool(re.search(r"^(what is|calculate|evaluate|solve)?\s*[\d\.\s\+\-\*\/\%\(\)\^x×÷=]+(\?)?$", prompt_lower.strip())) or \
+                         (len(prompt.split()) <= 15 and bool(re.search(r"\d+\s*[\+\-\*\/\%x×÷]\s*\d+", prompt_lower)) and not any(kw in prompt_lower for kw in ["brother", "sister", "riddle", "puzzle", "prove"]))
+        is_explanation = any(prompt_lower.startswith(q) or f" {q}" in prompt_lower for q in ["how does ", "how do ", "how is ", "explain how ", "what is ", "what are ", "describe ", "define "])
+        code_gen_triggers = ["write a ", "write an ", "implement ", "fix this bug", "debug ", "refactor ", "script to ", "python function"]
+        has_code_syntax = bool(re.search(r"(def\s+\w+\(|class\s+\w+|import\s+\w+|async\s+def|SELECT\s+.*FROM)", prompt))
+
+        if is_simple_math:
+            intent = "simple_qa"
+            difficulty = 0.24
+        elif any(k in prompt_lower for k in ["analyze ", "antitrust", "pharmacokinetic", "hipaa", "soc2", "quantum", "basel", "eu ai act"]):
+            intent = "domain_expert"
+            difficulty = 0.82
+        elif (any(trig in prompt_lower for trig in code_gen_triggers) or has_code_syntax) and not is_explanation:
             intent = "code_generation"
-            difficulty = 0.72
-        elif any(k in prompt_lower for k in ["sally", "brother", "sister", "riddle", "calculate", "prove"]):
-            intent = "complex_reasoning"
-            difficulty = 0.84
-        elif any(k in prompt_lower for k in ["paxos", "raft", "distributed", "consensus", "byzantine", "sharding", "acid"]):
-            intent = "complex_reasoning"
-            difficulty = 0.88
-        elif len(prompt.split()) > 100:
-            intent = "complex_reasoning"
             difficulty = 0.65
+        elif any(k in prompt_lower for k in ["sally", "brother", "sister", "riddle", "puzzle", "harmonic mean", "birthday", "probability", "prove "]):
+            intent = "complex_reasoning"
+            difficulty = 0.78
+        elif is_explanation:
+            intent = "simple_qa"
+            difficulty = 0.38
         else:
             intent = "simple_qa"
             difficulty = 0.28
@@ -154,21 +169,18 @@ def calculate_profiling_and_routing(prompt: str) -> Dict[str, Any]:
         slm_prob = router_instance.predict_slm_win_probability(difficulty, intent)
         target_model = router_instance.select_model(difficulty, intent)
     else:
-        if intent == "simple_qa" and difficulty <= 0.35:
+        if intent == "domain_expert" or difficulty >= 0.85:
+            slm_prob = 0.05
+            target_model = "claude-3-7-sonnet"
+        elif intent == "code_generation":
+            slm_prob = 0.88
+            target_model = "qwen2.5-coder:3b" if difficulty <= 0.75 else "claude-3-7-sonnet"
+        elif intent in ["complex_reasoning", "math_reasoning"]:
+            slm_prob = 0.55 if difficulty <= 0.85 else 0.15
+            target_model = "deepseek-r1:1.5b" if difficulty >= 0.50 else "routemem-specialist"
+        else:
             slm_prob = 0.94
             target_model = "routemem-specialist"
-        elif intent == "code_generation" and difficulty <= 0.75:
-            slm_prob = 0.88
-            target_model = "qwen2.5-coder:3b"
-        elif intent == "complex_reasoning" and difficulty <= 0.85:
-            slm_prob = 0.55
-            target_model = "deepseek-r1:1.5b"
-        elif intent == "complex_reasoning" and difficulty > 0.85:
-            slm_prob = 0.15
-            target_model = "claude-3-7-sonnet"
-        else:
-            slm_prob = 0.35
-            target_model = "claude-3-7-sonnet"
 
     return {
         "tokens": prompt_tokens,
@@ -365,6 +377,7 @@ def execute_full_journey(
 
     t0_stream = time.time()
     stream_tokens = []
+    sys.stdout.write(WHITE)
     try:
         for line_bytes in resp:
             line = line_bytes.decode('utf-8').strip()
@@ -380,11 +393,21 @@ def execute_full_journey(
                     delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
                     if delta:
                         stream_tokens.append(delta)
-                        streamer.stream_text(delta, is_cached=False)
+                        if streamer.mode == "instant":
+                            sys.stdout.write(delta)
+                            sys.stdout.flush()
+                        else:
+                            for ch in delta:
+                                sys.stdout.write(ch)
+                                sys.stdout.flush()
+                                time.sleep(0.002 if streamer.mode == "fast" else 0.005)
                 except json.JSONDecodeError:
                     pass
     except Exception as e:
         print(f"\n{RED}Stream interrupted: {e}{RESET}")
+    finally:
+        sys.stdout.write(RESET)
+        sys.stdout.flush()
 
     print()
     print_divider()
@@ -433,21 +456,21 @@ def print_summary(meta: Dict[str, Any], calc: Dict[str, Any], cached_latency_ms:
 SCENARIOS = [
     {
         "id": 1,
-        "name": "Code Synthesis (Low-Mid D=0.72)",
+        "name": "Code Synthesis (Low-Mid D=0.65)",
         "desc": "Kafka asyncio consumer → Routes to Local Code Specialist (qwen2.5-coder:3b)",
         "prompt": "Write a Python asyncio function to consume events from Kafka with batch committing and dead-letter queue."
     },
     {
         "id": 2,
-        "name": "Multi-Step Logic Trap (High D=0.84)",
+        "name": "Multi-Step Logic Trap (Mid-High D=0.78)",
         "desc": "Sally's brothers riddle → BGE centroid detects reasoning → deepseek-r1:1.5b",
-        "prompt": "Sally has 3 brothers. Each brother has 2 sisters. How many sisters does Sally have?"
+        "prompt": "Sally has 3 brothers. Each brother has 2 sisters. How many sisters does Sally have? Think step by step."
     },
     {
         "id": 3,
         "name": "Exact Hash Cache (Sub-1ms Bypass)",
         "desc": "Re-runs identical query → Sub-1ms Redis SHA-256 in-memory exact match",
-        "prompt": "Sally has 3 brothers. Each brother has 2 sisters. How many sisters does Sally have?"
+        "prompt": "Sally has 3 brothers. Each brother has 2 sisters. How many sisters does Sally have? Think step by step."
     },
     {
         "id": 4,
@@ -470,34 +493,51 @@ SCENARIOS = [
 ]
 
 
+def print_full_menu(endpoint: str):
+    """Renders the full menu overview."""
+    print_header(endpoint)
+    print(f"{BOLD}{WHITE}Complexity Benchmark Scenarios:{RESET}")
+    for s in SCENARIOS:
+        print(f"  {CYAN}[{s['id']}]{RESET}  {WHITE}{s['name']:<36}{RESET} {GRAY}{s['desc']}{RESET}")
+
+    print(f"\n{BOLD}{WHITE}Actions & Controls:{RESET}")
+    print(f"  {YELLOW}[7]{RESET}  {WHITE}Custom Prompt Input{RESET}                 {GRAY}Enter any technical query, math problem, or code request{RESET}")
+    print(f"  {YELLOW}[8]{RESET}  {WHITE}Run All Scenarios (1-6){RESET}             {GRAY}Automated multi-tier complexity benchmark suite{RESET}")
+    print(f"  {YELLOW}[9]{RESET}  {WHITE}Flush All Memory Tiers{RESET}              {GRAY}Purge Redis exact, Qdrant vectors & Graphiti KG{RESET}")
+    print(f"  {BLUE}[s]{RESET}  {WHITE}Toggle Stream Pacing{RESET}                {GRAY}Current: [{streamer.mode.upper()}] (smooth / fast / instant){RESET}")
+    print(f"  {GRAY}[c]  Clear Screen      [m] Show Menu      [0] Exit{RESET}")
+    print_divider()
+
+
 def run_interactive_menu(endpoint: str, step_by_step: bool):
-    """Clean, content-loaded interactive CLI menu."""
+    """Clean, content-loaded interactive CLI menu with non-destructive output retention."""
+    show_menu = True
     while True:
-        print_header(endpoint)
-        print(f"{BOLD}{WHITE}Complexity Benchmark Scenarios:{RESET}")
-        for s in SCENARIOS:
-            print(f"  {CYAN}[{s['id']}]{RESET}  {WHITE}{s['name']:<36}{RESET} {GRAY}{s['desc']}{RESET}")
+        if show_menu:
+            print_full_menu(endpoint)
+            show_menu = False
 
-        print(f"\n{BOLD}{WHITE}Actions & Controls:{RESET}")
-        print(f"  {YELLOW}[7]{RESET}  {WHITE}Custom Prompt Input{RESET}                 {GRAY}Enter any technical query or system test prompt{RESET}")
-        print(f"  {YELLOW}[8]{RESET}  {WHITE}Run All Scenarios (1-6){RESET}             {GRAY}Automated multi-tier complexity benchmark suite{RESET}")
-        print(f"  {YELLOW}[9]{RESET}  {WHITE}Flush All Memory Tiers{RESET}              {GRAY}Purge Redis exact, Qdrant vectors & Graphiti KG{RESET}")
-        print(f"  {BLUE}[s]{RESET}  {WHITE}Toggle Stream Pacing{RESET}                {GRAY}Current: [{streamer.mode.upper()}] (smooth / fast / instant){RESET}")
-        print(f"  {GRAY}[0]  Exit{RESET}")
-        print_divider()
-
+        print(f"{GRAY}Enter option [1-6: Scenarios | 7: Custom | 8: Run All | 9: Flush | s: Speed | m: Menu | c: Clear | 0: Exit]{RESET}")
         choice = input(f"{BOLD}{CYAN}routemem > {RESET}").strip()
 
         if choice in ["0", "q", "quit", "exit"]:
             print(f"\n{GRAY}Exiting RouteMem CLI. Goodbye.{RESET}\n")
             break
 
+        elif choice.lower() == "m":
+            show_menu = True
+            continue
+
+        elif choice.lower() == "c":
+            os.system("clear")
+            show_menu = True
+            continue
+
         elif choice.lower() == "s":
             modes = ["smooth", "fast", "instant"]
             curr = modes.index(streamer.mode)
             streamer.mode = modes[(curr + 1) % len(modes)]
             print(f"\n{GREEN}✔ Pacing switched to: [{streamer.mode.upper()}]{RESET}\n")
-            time.sleep(0.6)
 
         elif choice == "9":
             print(f"\n{GRAY}Flushing all memory tiers at {endpoint}...{RESET}")
@@ -505,21 +545,19 @@ def run_interactive_menu(endpoint: str, step_by_step: bool):
                 print(f"{GREEN}✔ All memory tiers successfully cleared.{RESET}\n")
             else:
                 print(f"{RED}✖ Failed to flush caches or endpoint offline.{RESET}\n")
-            time.sleep(1)
 
         elif choice == "8":
             print(f"\n{CYAN}Running all 6 complexity scenarios in sequence...{RESET}\n")
             for s in SCENARIOS:
                 execute_full_journey(s["prompt"], session_id=f"bench-{s['id']}", endpoint=endpoint, step_by_step=step_by_step)
-                time.sleep(1.2)
-            input(f"\n{GRAY}Benchmark complete. Press [Enter] to continue...{RESET}")
+                time.sleep(1.0)
+            print(f"\n{GREEN}✔ Benchmark suite finished.{RESET}\n")
 
         elif choice == "7":
-            print(f"\n{GRAY}Examples: 'ThreadSafeLRUCache in Python' | 'Sally has 4 brothers...' | 'Paxos vs Raft'{RESET}")
+            print(f"\n{GRAY}Examples: 'What is 12 + 15?' | 'ThreadSafeLRUCache in Python' | 'Sally has 3 brothers...' | 'Paxos vs Raft'{RESET}")
             custom = input(f"{BOLD}{WHITE}Enter prompt: {RESET}").strip()
             if custom:
                 execute_full_journey(custom, session_id="interactive-session", endpoint=endpoint, step_by_step=step_by_step)
-                input(f"\n{GRAY}Press [Enter] to return to menu...{RESET}")
 
         else:
             try:
@@ -527,11 +565,10 @@ def run_interactive_menu(endpoint: str, step_by_step: bool):
                 sc = next((s for s in SCENARIOS if s["id"] == idx), None)
                 if sc:
                     execute_full_journey(sc["prompt"], session_id=f"scenario-{idx}", endpoint=endpoint, step_by_step=step_by_step)
-                    input(f"\n{GRAY}Press [Enter] to return to menu...{RESET}")
                 else:
                     print(f"{RED}Invalid option selected.{RESET}\n")
             except ValueError:
-                print(f"{RED}Please enter an option number or key.{RESET}\n")
+                print(f"{RED}Please enter an option number (1-9), 'm' for menu, or '0' to exit.{RESET}\n")
 
 
 def main():

@@ -52,13 +52,19 @@ class VLLMClient(BaseLLMBackend):
         messages.append({"role": "user", "content": prompt})
 
         resolved_tokens = self._resolve_max_tokens(max_tokens)
+        temp = 0.2 if ("coder" in target_model or "deepseek" in target_model) else 0.7
 
         payload = {
             "model": target_model,
             "messages": messages,
             "stream": True,
-            "temperature": 0.7,
-            "max_tokens": resolved_tokens
+            "temperature": temp,
+            "max_tokens": resolved_tokens,
+            "options": {
+                "temperature": temp,
+                "num_predict": resolved_tokens,
+                "stop": ["<|im_end|>", "<|endoftext|>", "<|eot_id|>", "</s>", "\n\nUser:", "\n\nHuman:"]
+            }
         }
 
         success = False

@@ -1,0 +1,108 @@
+{
+  "timestamp": "2026-10-08T21:17:07Z",
+  "dataset": "large_scale_routing_benchmark.jsonl",
+  "total_queries": 50,
+  "overall_accuracy": 1.0,
+  "macro_f1": 1.0,
+  "weighted_f1": 1.0,
+  "mean_latency_ms": 48.883,
+  "p95_latency_ms": 68.002,
+  "cost_analysis": {
+    "baseline_gpt4o_cost_usd": 1.5,
+    "routemem_cost_usd": 0.03,
+    "cost_savings_pct": 98.0,
+    "local_slm_queries": 40,
+    "cloud_frontier_queries": 10
+  },
+  "category_accuracy": {
+    "systems_architecture": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 100.0
+    },
+    "code_generation": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 100.0
+    },
+    "math_reasoning": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 100.0
+    },
+    "simple_qa": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 100.0
+    },
+    "domain_expert": {
+      "total": 10,
+      "correct": 10,
+      "accuracy": 100.0
+    }
+  },
+  "model_metrics": {
+    "claude-3-7-sonnet": {
+      "true_positives": 10,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 10
+    },
+    "deepseek-r1:1.5b": {
+      "true_positives": 10,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 10
+    },
+    "qwen2.5-coder:3b": {
+      "true_positives": 10,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 10
+    },
+    "routemem-specialist": {
+      "true_positives": 20,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 20
+    }
+  },
+  "confusion_matrix": {
+    "routemem-specialist": {
+      "routemem-specialist": 20,
+      "claude-3-7-sonnet": 0,
+      "deepseek-r1:1.5b": 0,
+      "qwen2.5-coder:3b": 0
+    },
+    "qwen2.5-coder:3b": {
+      "qwen2.5-coder:3b": 10,
+      "claude-3-7-sonnet": 0,
+      "deepseek-r1:1.5b": 0,
+      "routemem-specialist": 0
+    },
+    "deepseek-r1:1.5b": {
+      "deepseek-r1:1.5b": 10,
+      "claude-3-7-sonnet": 0,
+      "qwen2.5-coder:3b": 0,
+      "routemem-specialist": 0
+    },
+    "claude-3-7-sonnet": {
+      "claude-3-7-sonnet": 10,
+      "qwen2.5-coder:3b": 0,
+      "deepseek-r1:1.5b": 0,
+      "routemem-specialist": 0
+    }
+  }
+}

@@ -64,6 +64,9 @@ class OmniRouter:
             intent_vec[1] = 1.0
         elif "reason" in i_lower:
             intent_vec[2] = 1.0
+        elif "expert" in i_lower:
+            # Domain expert queries: local SLMs cannot compete with Frontier Cloud models
+            return float(np.clip(1.0 - (difficulty * 0.90) - 0.25, 0.0, 1.0))
         else:
             intent_vec[3] = 1.0
 
@@ -83,6 +86,39 @@ class OmniRouter:
         except Exception as e:
             logger.error(f"Error during ONNX preference evaluation: {e}")
             return float(np.clip(1.0 - (difficulty * 0.70), 0.0, 1.0))
+
+    def _solve_lagrangian_cloud(
+        self,
+        difficulty: float,
+        intent: str,
+        max_cost_target: Optional[float] = None,
+        quality_target: Optional[float] = None
+    ) -> str:
+        """Solves Lagrangian Dual Optimization for Cloud Frontier Fleet."""
+        target_quality = quality_target or self.alpha_target
+        target_vec = self.mapper.map_intent_to_target_vector(intent, difficulty)
+        candidate_models = self.mapper.find_capable_models(target_vec)
+
+        best_model = None
+        min_lagrangian_score = float("inf")
+
+        for model_id in candidate_models:
+            specs = self.models_spec.get(model_id, {})
+            cost = specs.get("cost_per_token", 0.00005)
+            base_acc = specs.get("base_accuracy", 0.85)
+
+            predicted_acc = base_acc * (1.0 - 0.2 * max(0.0, difficulty - 0.5))
+
+            if max_cost_target is not None and cost > max_cost_target:
+                continue
+
+            lagrangian_score = cost * 1000.0 - self.lambda_quality * (predicted_acc - target_quality)
+
+            if lagrangian_score < min_lagrangian_score:
+                min_lagrangian_score = lagrangian_score
+                best_model = model_id
+
+        return best_model or "claude-3-7-sonnet"
 
     def select_model(
         self,
@@ -104,44 +140,26 @@ class OmniRouter:
             math_density=math_density
         )
 
+        i_lower = intent.lower()
+
+        # Domain expert queries or ultra-complex queries escalate to Frontier Cloud
+        if ("expert" in i_lower and difficulty >= 0.65) or difficulty >= 0.85:
+            return self._solve_lagrangian_cloud(difficulty, intent, max_cost_target, quality_target)
+
         # 2. Fast-Path Local SLM Resolution if Neural Head predicts local model satisfies query
-        if slm_win_prob >= 0.50:
-            i_lower = intent.lower()
-            if "code" in i_lower:
-                return "qwen2.5-coder:3b"
-            elif "math" in i_lower or "reason" in i_lower:
+        if "code" in i_lower and (slm_win_prob >= 0.50 or difficulty <= 0.75):
+            return "qwen2.5-coder:3b"
+        elif ("math" in i_lower or "reason" in i_lower) and (slm_win_prob >= 0.40 or difficulty <= 0.85):
+            # deepseek-r1:1.5b is a reasoning SLM with <think> chains; only invoke for non-trivial logic/math (D >= 0.50)
+            if difficulty >= 0.50:
                 return "deepseek-r1:1.5b"
-            elif difficulty <= 0.25:
+            else:
+                return "routemem-specialist"
+        elif "qa" in i_lower or "simple" in i_lower or slm_win_prob >= 0.50 or difficulty <= 0.70:
+            if difficulty <= 0.25:
                 return "phi3.5:latest"
             else:
                 return "routemem-specialist"
 
         # 3. Escalation: Solve Lagrangian Dual Optimization for Cloud Frontier Fleet
-        target_quality = quality_target or self.alpha_target
-        target_vec = self.mapper.map_intent_to_target_vector(intent, difficulty)
-        candidate_models = self.mapper.find_capable_models(target_vec)
-
-        best_model = None
-        min_lagrangian_score = float("inf")
-
-        for model_id in candidate_models:
-            specs = self.models_spec.get(model_id, {})
-            cost = specs.get("cost_per_token", 0.00005)
-            base_acc = specs.get("base_accuracy", 0.85)
-
-            # Adjust predicted accuracy based on query difficulty
-            predicted_acc = base_acc * (1.0 - 0.2 * max(0.0, difficulty - 0.5))
-
-            if max_cost_target is not None and cost > max_cost_target:
-                continue
-
-            lagrangian_score = cost * 1000.0 - self.lambda_quality * (predicted_acc - target_quality)
-
-            if lagrangian_score < min_lagrangian_score:
-                min_lagrangian_score = lagrangian_score
-                best_model = model_id
-
-        if not best_model:
-            best_model = "openai/gpt-oss-120b"
-
-        return best_model
+        return self._solve_lagrangian_cloud(difficulty, intent, max_cost_target, quality_target)
