@@ -12,3 +12,4 @@ httpx>=0.26.0
 prometheus-client>=0.19.0
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
+zep-cloud>=3.30.0

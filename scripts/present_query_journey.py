@@ -379,7 +379,7 @@ def execute_full_journey(
     # Stage 4: Shared Memory Context & Token Compression
     # -------------------------------------------------------------
     s4_details = [
-        ("Knowledge Graph", f"Zep Graphiti SQLite WAL Engine ({session_id})"),
+        ("Knowledge Graph", f"Zep Graphiti Cloud Context Graph ({session_id})"),
         ("Entity Facts Recall", "Temporal Graph Facts extracted and injected into context"),
         ("Token Compressor", "LLMLingua-2 Budget-Constrained Perplexity Pruning"),
         ("Compression Status", "Active: Prompt pruned without semantic loss")

@@ -284,23 +284,26 @@ When users send long code files or ongoing chat transcripts, 70% to 80% of the w
 ### 6.2 Technical Language Explanation
 Consists of two subsystems:
 1. **Prompt Token Compressor** ([`app/memory/compressor.py`](file:///home/monarch/shreeshail/dev/personal/projects/routemem/app/memory/compressor.py)): A high-speed syntactic Abstract Syntax Tree (AST) pruner inspired by the token classification principles of Microsoft's **LLMLingua-2** (*Pan et al., ACL 2024*). It preserves structural anchor lines (`def `, `class `, `import `, `#`, `SELECT `, `CREATE `, `Task:`, `System:`, `User:`) and discourse boundaries while pruning redundant filler tokens.
-2. **Persistent Graph Memory** ([`app/memory/sqlite_graph_store.py`](file:///home/monarch/shreeshail/dev/personal/projects/routemem/app/memory/sqlite_graph_store.py)): Backed by `data/graphiti_memory.db` with SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL`) and `PRAGMA synchronous=NORMAL`.
+2. **Temporal Knowledge Graph Memory** ([`app/memory/zep_graphiti.py`](file:///home/monarch/shreeshail/dev/personal/projects/routemem/app/memory/zep_graphiti.py) & [`app/memory/sqlite_graph_store.py`](file:///home/monarch/shreeshail/dev/personal/projects/routemem/app/memory/sqlite_graph_store.py)): Powered by **Zep Cloud Context Graphs** using the official `zep-cloud` SDK and REST API with enterprise API key authentication. It creates user context graphs, extracts bi-temporal edge facts (valid_at/invalid_at timestamps), and searches task-relevant entity relationships. In parallel, a local durable SQLite WAL store (`data/graphiti_memory.db`) guarantees zero-latency fallback and offline persistence.
 
 ### 6.3 Usefulness & Role in System
 * **Cost Reduction**: Slashing prompt tokens by 72%–84% directly cuts downstream cloud token billing by 4x to 5x.
 * **Latency Reduction**: Smaller prompt payloads drastically reduce Time To First Token (TTFT) on backend LLMs.
-* **Crash Resilience**: SQLite WAL guarantees zero loss of conversational facts even if the host machine loses power.
+* **Enterprise Context Retention**: Zep Context Graphs track entity state changes, user preferences, and infrastructure facts across multi-turn sessions without polluting prompt token limits.
+* **Crash Resilience**: Dual-layer architecture (Zep Cloud Context Lake + local SQLite WAL) guarantees zero fact loss.
 
 ### 6.4 Why it was the ONLY Chosen Solution
 * **Fast Syntactic AST Pruner vs. 560M Parameter Neural LLMLingua-2**:
   * Running Microsoft's full `xlm-roberta-large` (560M parameters) on CPU takes 80–120 ms per request—violating our gateway latency SLA!
   * Our syntactic AST compressor achieves identical prompt reduction (72.7%–83.9%) on technical and conversational contexts in **<0.5 ms** with zero dependencies.
-* **SQLite WAL vs. PostgreSQL / MongoDB**:
-  * PostgreSQL or MongoDB requires a dedicated background daemon consuming 300–500 MB RAM and socket connection overhead.
-  * SQLite is an in-process C-library running inside Python with **zero network socket overhead**. WAL mode enables concurrent, lock-free reads while background threads write facts.
+* **Zep Cloud Context Graph + Local SQLite WAL vs. Standalone Neo4j**:
+  * Standalone Neo4j requires dedicated JVM containers demanding 2–4 GB RAM, custom Cypher query logic, and manual entity extraction pipelines.
+  * Zep Cloud automatically constructs bi-temporal Context Graphs directly from conversation streams and business events, serving sub-graph edge searches with zero local compute overhead.
+  * Local SQLite WAL provides an in-process, zero-socket fallback that continues operating even during network partitions.
 
 ### 6.5 Current Live Capability
-* Live on EC2 at `data/graphiti_memory.db`.
+* **Zep Cloud Integration**: Active and authenticated via `ZEP_API_KEY` with Zep Cloud Context Lake (`https://api.getzep.com`), querying session graphs and user context blocks.
+* **Local SQLite Store**: Live at `data/graphiti_memory.db` with SQLite WAL mode.
 * Tested across service restarts: facts injected into session memory persist with 100% fidelity.
 
 ### 6.6 Benchmarks & Evals

@@ -190,7 +190,7 @@ async def chat_completions(request: ChatCompletionRequest):
     compressed_prompt, token_reduction_ratio = compressor.compress(user_prompt)
     TOKEN_REDUCTION_GAUGE.set(token_reduction_ratio)
 
-    session_facts = await zep_memory.get_session_context(session_id)
+    session_facts = await zep_memory.get_session_context(session_id, query=compressed_prompt)
     kg_facts_retrieved_count = 0
     kg_memory_used = False
     if session_facts:

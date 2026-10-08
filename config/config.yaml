@@ -22,7 +22,8 @@ memory:
     model_name: "microsoft/llmlingua-2-xlm-roberta-large-meetingbank"
   zep:
     enabled: true
-    url: "http://localhost:8080"
+    url: "https://api.getzep.com"
+    api_key: "z_1dWlkIjoiODhiYjk1NmItYzBkNC00ZTk4LTg1MjEtOWRkOTcwZWQwMGY0In0.FurtcL9SMVmCC1OWxCPNCxsS72rVhkC9r-sANpNOKdwhsZxoCrCsvqbdOxMm1VX9trtSLhAigbVprwAl6w7h4A"
 
 router:
   profiler:

@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
     deepseek_api_key: str = Field(default="", validation_alias="DEEPSEEK_API_KEY")
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
+    zep_api_key: str = Field(default="", validation_alias="ZEP_API_KEY")
+    zep_api_url: str = Field(default="https://api.getzep.com", validation_alias="ZEP_API_URL")
 
     # Gateway Parameters & Thresholds
     exact_cache_enabled: bool = Field(default=True, validation_alias="EXACT_CACHE_ENABLED")
