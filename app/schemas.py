@@ -11,7 +11,8 @@ class ChatMessage(BaseModel):
 class ChatCompletionRequest(BaseModel):
     messages: List[ChatMessage]
     model: str = Field(default="routemem-auto")
-    session_id: Optional[str] = Field(default="default-session")
+    session_id: Optional[str] = Field(default=None)
+    user: Optional[str] = Field(default=None)
     temperature: Optional[float] = 0.7
     top_p: Optional[float] = 1.0
     max_tokens: Optional[int] = None

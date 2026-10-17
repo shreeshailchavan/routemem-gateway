@@ -106,7 +106,7 @@ async def sync_background_state(
 ):
     """Stage 8: Non-blocking background state sync across Redis, Qdrant & Zep Graphiti."""
     try:
-        await exact_cache.set(system_prompt, user_prompt, response_text, context_prefix=context_prefix)
+        await exact_cache.set(system_prompt, user_prompt, response_text, context_prefix=context_prefix, session_id=session_id)
         await semantic_cache.index(user_prompt, response_text, context_prefix=context_prefix, session_id=session_id)
         await zep_memory.add_session_interaction(session_id, user_prompt, response_text)
     except Exception as e:
@@ -146,7 +146,7 @@ async def chat_completions(request: ChatCompletionRequest):
     REQUEST_COUNT.labels(method="POST", endpoint="/v1/chat/completions", status="200").inc()
 
     # Stage 1: Ingestion & Extraction
-    session_id = request.session_id or "default-session"
+    session_id = request.session_id or request.user or "default-session"
     system_prompt = next((m.content for m in request.messages if m.role == "system"), "")
     orig_system_prompt = system_prompt
     user_prompt, context_prefix, composite_prompt = extract_conversation_context(request.messages)
@@ -154,7 +154,7 @@ async def chat_completions(request: ChatCompletionRequest):
         raise HTTPException(status_code=400, detail="No user message provided in request.")
 
     # Stage 2: Tier-0 Exact Hash Cache Check (2ms)
-    exact_hit = await exact_cache.get(orig_system_prompt, user_prompt, context_prefix=context_prefix)
+    exact_hit = await exact_cache.get(orig_system_prompt, user_prompt, context_prefix=context_prefix, session_id=session_id)
     if exact_hit:
         ttft_ms = (time.perf_counter() - start_time) * 1000
         CACHE_HITS.labels(cache_type="exact").inc()
@@ -178,7 +178,7 @@ async def chat_completions(request: ChatCompletionRequest):
         CACHE_HITS.labels(cache_type="semantic").inc()
         TTFT_HISTOGRAM.observe(ttft_ms / 1000.0)
         # Tier-0 Exact Promotion: Warm Redis exact cache for sub-1ms future hits
-        asyncio.create_task(exact_cache.set(orig_system_prompt, user_prompt, semantic_hit.response, context_prefix=context_prefix))
+        asyncio.create_task(exact_cache.set(orig_system_prompt, user_prompt, semantic_hit.response, context_prefix=context_prefix, session_id=session_id))
         return ChatCompletionResponse.from_cache(
             content=semantic_hit.response,
             cache_status="SEMANTIC_HIT",
@@ -272,7 +272,13 @@ async def chat_completions(request: ChatCompletionRequest):
         async def stream_generator():
             full_response = []
             first_token_time = None
-            async for token in backend_client.dispatch_stream(actual_model_name, compressed_prompt, system_prompt=system_prompt, max_tokens=resolved_max_tokens):
+            async for token in backend_client.dispatch_stream(
+                actual_model_name,
+                compressed_prompt,
+                system_prompt=system_prompt,
+                max_tokens=resolved_max_tokens,
+                conversation_history=request.messages
+            ):
                 if first_token_time is None:
                     first_token_time = (time.perf_counter() - start_time) * 1000
                     TTFT_HISTOGRAM.observe(first_token_time / 1000.0)
@@ -310,7 +316,13 @@ async def chat_completions(request: ChatCompletionRequest):
         return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
     # Non-streaming response path
-    full_response = await backend_client.dispatch_completion(actual_model_name, compressed_prompt, system_prompt=system_prompt, max_tokens=resolved_max_tokens)
+    full_response = await backend_client.dispatch_completion(
+        actual_model_name,
+        compressed_prompt,
+        system_prompt=system_prompt,
+        max_tokens=resolved_max_tokens,
+        conversation_history=request.messages
+    )
     ttft_ms = (time.perf_counter() - start_time) * 1000
     TTFT_HISTOGRAM.observe(ttft_ms / 1000.0)
 

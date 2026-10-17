@@ -2,7 +2,7 @@ import json
 from typing import AsyncGenerator, Optional
 import httpx
 from app.config import settings
-from app.backends.base import BaseLLMBackend
+from app.backends.base import BaseLLMBackend, build_chat_messages
 
 class DeepSeekClient(BaseLLMBackend):
     """DeepSeek API Client for DeepSeek V3 and R1 reasoning engines."""
@@ -11,7 +11,14 @@ class DeepSeekClient(BaseLLMBackend):
         self.api_key = api_key or getattr(settings, "deepseek_api_key", "")
         self.endpoint_url = endpoint_url
 
-    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "") -> AsyncGenerator[str, None]:
+    async def dispatch_stream(
+        self,
+        model: str,
+        prompt: str,
+        system_prompt: str = "",
+        conversation_history: Optional[list] = None,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
         if not self.api_key:
             yield f"[RouteMem DeepSeek Engine ({model})]: Response generated successfully."
             return
@@ -21,10 +28,7 @@ class DeepSeekClient(BaseLLMBackend):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+        messages = build_chat_messages(prompt, system_prompt=system_prompt, conversation_history=conversation_history)
 
         payload = {
             "model": model,
@@ -53,8 +57,15 @@ class DeepSeekClient(BaseLLMBackend):
         except Exception:
             yield f"[RouteMem DeepSeek Client ({model})]: Response completed."
 
-    async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "") -> str:
+    async def dispatch_completion(
+        self,
+        model: str,
+        prompt: str,
+        system_prompt: str = "",
+        conversation_history: Optional[list] = None,
+        **kwargs
+    ) -> str:
         tokens = []
-        async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt):
+        async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt, conversation_history=conversation_history, **kwargs):
             tokens.append(chunk)
         return "".join(tokens)

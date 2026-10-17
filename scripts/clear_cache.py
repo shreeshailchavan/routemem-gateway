@@ -14,7 +14,7 @@ import json
 import urllib.request
 import urllib.error
 
-GATEWAY_URL = os.getenv("ROUTEMEM_URL", "http://18.214.99.62:8000")
+GATEWAY_URL = os.getenv("ROUTEMEM_URL", "http://54.221.136.83:8000")
 
 GREEN = "\033[38;5;82m"
 CYAN = "\033[38;5;51m"

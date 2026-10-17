@@ -1,3 +1,4 @@
+import re
 from typing import Optional, List, Set
 import httpx
 from app.config import settings, config_yaml
@@ -45,12 +46,15 @@ class ZepGraphitiMemory:
     async def get_session_context(self, session_id: str, query: Optional[str] = None) -> Optional[str]:
         """Fetch temporal entity relationship facts for a session.
         
-        Attempts retrieval from Zep Cloud Knowledge Graph, then falls back
-        to durable local SQLite WAL store.
+        Performs a hybrid merge across:
+        1. Online Zep Cloud Knowledge Graph (relational entity edges & nodes)
+        2. Direct REST Fallback
+        3. Durable local SQLite WAL Graph Store (immediate zero-latency recall)
         """
         if not session_id:
             return None
 
+        clean_user_id = re.sub(r'[^a-zA-Z0-9_\-]', '_', session_id)[:64]
         retrieved_facts: List[str] = []
 
         # 1. Query Zep Cloud Context Graph using SDK
@@ -58,7 +62,7 @@ class ZepGraphitiMemory:
             try:
                 search_query = query if query and len(query.strip()) > 3 else "context memory facts"
                 results = await self.client.graph.search(
-                    user_id=session_id,
+                    user_id=clean_user_id,
                     query=search_query,
                     scope="edges"
                 )
@@ -67,6 +71,15 @@ class ZepGraphitiMemory:
                         fact_text = getattr(edge, "fact", None)
                         if fact_text and fact_text not in retrieved_facts:
                             retrieved_facts.append(fact_text)
+                            if len(retrieved_facts) >= 5:
+                                break
+
+                # Also inspect extracted nodes if edges were sparse
+                if len(retrieved_facts) < 5 and results and getattr(results, "nodes", None):
+                    for node in results.nodes:
+                        summary = getattr(node, "summary", None) or getattr(node, "name", None)
+                        if summary and summary not in retrieved_facts:
+                            retrieved_facts.append(str(summary))
                             if len(retrieved_facts) >= 5:
                                 break
             except Exception as e:
@@ -82,7 +95,7 @@ class ZepGraphitiMemory:
                 }
                 async with httpx.AsyncClient(timeout=2.0) as http_client:
                     res = await http_client.get(
-                        f"{self.zep_url}/api/v2/users/{session_id}/context",
+                        f"{self.zep_url}/api/v2/users/{clean_user_id}/context",
                         headers=headers
                     )
                     if res.status_code == 200:
@@ -93,21 +106,27 @@ class ZepGraphitiMemory:
             except Exception:
                 pass
 
-        # 3. Fallback / Merge: Query Durable SQLite Graph Store
-        if not retrieved_facts:
+        # 3. Hybrid Merge: ALWAYS query durable SQLite Graph Store for immediate zero-lag local facts
+        try:
             session_facts = await self.sqlite_store.get_facts(session_id, limit=5)
             if session_facts:
-                retrieved_facts.extend(session_facts)
+                for sf in session_facts:
+                    if sf not in retrieved_facts and len(retrieved_facts) < 8:
+                        retrieved_facts.append(sf)
+        except Exception as e:
+            logger.debug(f"SQLite graph store retrieval error: {e}")
 
         if retrieved_facts:
-            return "\n".join(f"- {f}" for f in retrieved_facts[:5])
+            return "\n".join(f"- {f}" for f in retrieved_facts[:6])
 
         return None
 
     async def add_session_interaction(self, session_id: str, user_prompt: str, response: str) -> bool:
-        """Asynchronously log new interaction to Zep Cloud graph store & durable SQLite store."""
+        """Asynchronously log new interaction to durable SQLite store & Zep Cloud graph store."""
         if not session_id:
             return False
+
+        clean_user_id = re.sub(r'[^a-zA-Z0-9_\-]', '_', session_id)[:64]
 
         # Extract temporal fact string
         fact = f"User asked: '{user_prompt}' -> Gateway response context: '{response[:150]}...'"
@@ -119,20 +138,20 @@ class ZepGraphitiMemory:
         if self.client:
             try:
                 # Ensure user exists in Zep Cloud
-                if session_id not in self._known_users:
+                if clean_user_id not in self._known_users:
                     try:
-                        await self.client.user.get(user_id=session_id)
+                        await self.client.user.get(user_id=clean_user_id)
                     except Exception:
                         await self.client.user.add(
-                            user_id=session_id,
+                            user_id=clean_user_id,
                             first_name="User",
-                            last_name=session_id
+                            last_name=clean_user_id
                         )
-                    self._known_users.add(session_id)
+                    self._known_users.add(clean_user_id)
 
                 # Ingest interaction into user's Context Graph
                 await self.client.graph.add(
-                    user_id=session_id,
+                    user_id=clean_user_id,
                     type="text",
                     data=f"User interaction in session {session_id}:\nUser: {user_prompt}\nAssistant: {response[:350]}"
                 )
@@ -150,7 +169,7 @@ class ZepGraphitiMemory:
                 }
                 async with httpx.AsyncClient(timeout=2.0) as http_client:
                     await http_client.post(
-                        f"{self.zep_url}/api/v2/graphs/users/{session_id}/data",
+                        f"{self.zep_url}/api/v2/graphs/users/{clean_user_id}/data",
                         headers=headers,
                         json={
                             "type": "text",

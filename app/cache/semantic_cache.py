@@ -44,6 +44,15 @@ class SemanticCache:
     def _embed_text(self, text: str) -> List[float]:
         return self.embedder.embed(text)
 
+    def _is_session_sensitive(self, text: str) -> bool:
+        sensitive_terms = [
+            "my ", "my\n", "mine", " me", "who am i", "what is my", "what's my",
+            "our ", "we ", "us ", "remember", "secret", "password", "token", "key",
+            "project", "user", "myself", "recall", "stored", "graph", "profile"
+        ]
+        low = text.lower()
+        return any(term in low for term in sensitive_terms)
+
     async def search_with_vector(
         self,
         user_prompt: str,
@@ -85,6 +94,20 @@ class SemanticCache:
                         has_query_context = bool(context_prefix and context_prefix.strip())
                         has_hit_context = bool(payload.get("has_context", False))
                         if has_query_context != has_hit_context:
+                            return None, vector
+
+                        # Cross-session isolation guard: prevent data leakage and cache poisoning
+                        hit_session = (payload.get("session_id") or "").strip()
+                        query_session = (session_id or "").strip()
+                        hit_user_prompt = payload.get("user_prompt", "")
+                        
+                        is_sensitive = (
+                            has_query_context or
+                            has_hit_context or
+                            self._is_session_sensitive(user_prompt) or
+                            self._is_session_sensitive(hit_user_prompt)
+                        )
+                        if is_sensitive and hit_session and query_session and hit_session != query_session:
                             return None, vector
 
                         return SemanticHit(

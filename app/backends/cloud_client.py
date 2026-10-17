@@ -2,7 +2,7 @@ import json
 from typing import AsyncGenerator, Optional
 import httpx
 from app.config import settings
-from app.backends.base import BaseLLMBackend
+from app.backends.base import BaseLLMBackend, build_chat_messages
 
 class CloudAPIClient(BaseLLMBackend):
     """Cloud Provider API Client (OpenAI & Anthropic)."""
@@ -11,19 +11,19 @@ class CloudAPIClient(BaseLLMBackend):
         self.openai_key = openai_api_key or settings.openai_api_key
         self.anthropic_key = anthropic_api_key or settings.anthropic_api_key
 
-    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None, conversation_history: Optional[list] = None, **kwargs) -> AsyncGenerator[str, None]:
         if "claude" in model.lower() or "anthropic" in model.lower():
-            async for chunk in self._stream_anthropic(model, prompt, system_prompt, max_tokens=max_tokens):
+            async for chunk in self._stream_anthropic(model, prompt, system_prompt, max_tokens=max_tokens, conversation_history=conversation_history):
                 yield chunk
         else:
-            async for chunk in self._stream_openai(model, prompt, system_prompt, max_tokens=max_tokens):
+            async for chunk in self._stream_openai(model, prompt, system_prompt, max_tokens=max_tokens, conversation_history=conversation_history):
                 yield chunk
 
-    async def _stream_openai(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None) -> AsyncGenerator[str, None]:
+    async def _stream_openai(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None, conversation_history: Optional[list] = None) -> AsyncGenerator[str, None]:
         if not self.openai_key:
             from app.backends.groq_client import GroqClient
             groq = GroqClient()
-            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt, max_tokens=max_tokens):
+            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt, max_tokens=max_tokens, conversation_history=conversation_history):
                 yield chunk
             return
 
@@ -32,10 +32,7 @@ class CloudAPIClient(BaseLLMBackend):
             "Authorization": f"Bearer {self.openai_key}",
             "Content-Type": "application/json"
         }
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+        messages = build_chat_messages(prompt, system_prompt=system_prompt, conversation_history=conversation_history)
 
         payload = {
             "model": model,
@@ -64,11 +61,11 @@ class CloudAPIClient(BaseLLMBackend):
         except Exception:
             yield f"[RouteMem Cloud OpenAI ({model})]: Task completed."
 
-    async def _stream_anthropic(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None) -> AsyncGenerator[str, None]:
+    async def _stream_anthropic(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None, conversation_history: Optional[list] = None) -> AsyncGenerator[str, None]:
         if not self.anthropic_key:
             from app.backends.groq_client import GroqClient
             groq = GroqClient()
-            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt, max_tokens=max_tokens):
+            async for chunk in groq.dispatch_stream("openai/gpt-oss-120b", prompt, system_prompt=system_prompt, max_tokens=max_tokens, conversation_history=conversation_history):
                 yield chunk
             return
 
@@ -78,10 +75,19 @@ class CloudAPIClient(BaseLLMBackend):
             "anthropic-version": "2023-06-01",
             "content-type": "application/json"
         }
+        messages = []
+        if conversation_history and len(conversation_history) > 1:
+            for m in conversation_history[:-1]:
+                role = getattr(m, "role", "") if not isinstance(m, dict) else m.get("role", "")
+                content = getattr(m, "content", "") if not isinstance(m, dict) else m.get("content", "")
+                if role in ("user", "assistant") and content and content.strip():
+                    messages.append({"role": role, "content": content.strip()})
+        messages.append({"role": "user", "content": prompt})
+
         payload = {
             "model": model,
             "max_tokens": max_tokens or 2048,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "stream": True
         }
         if system_prompt:

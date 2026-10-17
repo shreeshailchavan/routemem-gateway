@@ -23,14 +23,27 @@ class GeminiClient(BaseLLMBackend):
         prompt: str,
         system_prompt: str = "",
         temperature: float = 0.7,
-        max_tokens: int = 2048
+        max_tokens: int = 2048,
+        conversation_history: Optional[List[Any]] = None
     ) -> Dict[str, Any]:
+        contents: List[Dict[str, Any]] = []
+        if conversation_history and len(conversation_history) > 1:
+            for m in conversation_history[:-1]:
+                role = getattr(m, "role", "") if not isinstance(m, dict) else m.get("role", "")
+                content = getattr(m, "content", "") if not isinstance(m, dict) else m.get("content", "")
+                if role in ("user", "assistant") and content and content.strip():
+                    gemini_role = "model" if role == "assistant" else "user"
+                    contents.append({
+                        "role": gemini_role,
+                        "parts": [{"text": content.strip()}]
+                    })
+        contents.append({
+            "role": "user",
+            "parts": [{"text": prompt}]
+        })
+
         payload: Dict[str, Any] = {
-            "contents": [
-                {
-                    "parts": [{"text": prompt}]
-                }
-            ],
+            "contents": contents,
             "generationConfig": {
                 "temperature": temperature,
                 "maxOutputTokens": max_tokens,
@@ -49,7 +62,9 @@ class GeminiClient(BaseLLMBackend):
         prompt: str,
         system_prompt: str = "",
         temperature: float = 0.7,
-        max_tokens: int = 2048
+        max_tokens: int = 2048,
+        conversation_history: Optional[List[Any]] = None,
+        **kwargs
     ) -> AsyncGenerator[str, None]:
         if not self.api_key:
             yield f"Here is the solution for '{prompt}' processed via RouteMem Gateway utilizing model {model}."
@@ -58,7 +73,7 @@ class GeminiClient(BaseLLMBackend):
         clean_model = model.replace("models/", "")
         candidate_models = [clean_model] + [m for m in self.DEFAULT_FALLBACKS if m != clean_model]
         headers = {"Content-Type": "application/json"}
-        payload = self._build_payload(prompt, system_prompt, temperature, max_tokens)
+        payload = self._build_payload(prompt, system_prompt, temperature, max_tokens, conversation_history=conversation_history)
 
         for target_model in candidate_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:streamGenerateContent?alt=sse&key={self.api_key}"
@@ -94,7 +109,9 @@ class GeminiClient(BaseLLMBackend):
         prompt: str,
         system_prompt: str = "",
         temperature: float = 0.7,
-        max_tokens: int = 2048
+        max_tokens: int = 2048,
+        conversation_history: Optional[List[Any]] = None,
+        **kwargs
     ) -> str:
         if not self.api_key:
             return f"[RouteMem Gemini Engine ({model})]: Output generated."
@@ -102,7 +119,7 @@ class GeminiClient(BaseLLMBackend):
         clean_model = model.replace("models/", "")
         candidate_models = [clean_model] + [m for m in self.DEFAULT_FALLBACKS if m != clean_model]
         headers = {"Content-Type": "application/json"}
-        payload = self._build_payload(prompt, system_prompt, temperature, max_tokens)
+        payload = self._build_payload(prompt, system_prompt, temperature, max_tokens, conversation_history=conversation_history)
 
         for target_model in candidate_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={self.api_key}"

@@ -2,7 +2,7 @@ import json
 from typing import AsyncGenerator, Optional
 import httpx
 from app.config import settings
-from app.backends.base import BaseLLMBackend
+from app.backends.base import BaseLLMBackend, build_chat_messages
 from app.utils.logger import get_logger
 
 logger = get_logger("vllm_client")
@@ -28,7 +28,15 @@ class VLLMClient(BaseLLMBackend):
             return min(max_tokens, ceiling)
         return default_cap
 
-    async def dispatch_stream(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None) -> AsyncGenerator[str, None]:
+    async def dispatch_stream(
+        self,
+        model: str,
+        prompt: str,
+        system_prompt: str = "",
+        max_tokens: Optional[int] = None,
+        conversation_history: Optional[list] = None,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
         # Dynamic model resolver for installed local SLM catalog
         m_lower = model.lower() if model else ""
         if "specialist" in m_lower or "routemem" in m_lower:
@@ -46,10 +54,7 @@ class VLLMClient(BaseLLMBackend):
 
         ollama_url = "http://localhost:11434/v1/chat/completions"
         
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+        messages = build_chat_messages(prompt, system_prompt=system_prompt, conversation_history=conversation_history)
 
         resolved_tokens = self._resolve_max_tokens(max_tokens)
         temp = 0.2 if ("coder" in target_model or "deepseek" in target_model) else 0.7
@@ -93,11 +98,19 @@ class VLLMClient(BaseLLMBackend):
         # Fallback to Groq LPU SLM if local worker offline
         from app.backends.groq_client import GroqClient
         groq = GroqClient()
-        async for chunk in groq.dispatch_stream("openai/gpt-oss-20b", prompt, system_prompt=system_prompt, max_tokens=max_tokens):
+        async for chunk in groq.dispatch_stream("openai/gpt-oss-20b", prompt, system_prompt=system_prompt, max_tokens=max_tokens, conversation_history=conversation_history):
             yield chunk
 
-    async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None) -> str:
+    async def dispatch_completion(
+        self,
+        model: str,
+        prompt: str,
+        system_prompt: str = "",
+        max_tokens: Optional[int] = None,
+        conversation_history: Optional[list] = None,
+        **kwargs
+    ) -> str:
         tokens = []
-        async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt, max_tokens=max_tokens):
+        async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt, max_tokens=max_tokens, conversation_history=conversation_history):
             tokens.append(chunk)
         return "".join(tokens)

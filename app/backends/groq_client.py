@@ -2,7 +2,7 @@ import json
 from typing import AsyncGenerator, Optional, List, Dict, Any
 import httpx
 from app.config import settings
-from app.backends.base import BaseLLMBackend
+from app.backends.base import BaseLLMBackend, build_chat_messages
 
 class GroqClient(BaseLLMBackend):
     """Groq API Client using OpenAI-compatible Chat Completions standard.
@@ -21,7 +21,9 @@ class GroqClient(BaseLLMBackend):
         prompt: str,
         system_prompt: str = "",
         temperature: float = 0.7,
-        max_tokens: Optional[int] = 2048
+        max_tokens: Optional[int] = 2048,
+        conversation_history: Optional[list] = None,
+        **kwargs
     ) -> AsyncGenerator[str, None]:
         if not self.api_key:
             yield f"Here is the solution for '{prompt}' processed via RouteMem Gateway utilizing model {model}."
@@ -33,10 +35,7 @@ class GroqClient(BaseLLMBackend):
             "Content-Type": "application/json"
         }
 
-        messages: List[Dict[str, str]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+        messages = build_chat_messages(prompt, system_prompt=system_prompt, conversation_history=conversation_history)
 
         candidate_models = [model] + [m for m in self.DEFAULT_FALLBACKS if m != model]
 
@@ -77,8 +76,8 @@ class GroqClient(BaseLLMBackend):
                 if target_model == candidate_models[-1]:
                     yield f"[RouteMem Groq Client ({target_model})]: Task completed."
 
-    async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "") -> str:
+    async def dispatch_completion(self, model: str, prompt: str, system_prompt: str = "", max_tokens: Optional[int] = None, conversation_history: Optional[list] = None, **kwargs) -> str:
         tokens = []
-        async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt):
+        async for chunk in self.dispatch_stream(model, prompt, system_prompt=system_prompt, max_tokens=max_tokens, conversation_history=conversation_history, **kwargs):
             tokens.append(chunk)
         return "".join(tokens)
